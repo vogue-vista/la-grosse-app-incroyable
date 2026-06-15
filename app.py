@@ -18,24 +18,25 @@ if "shop" in query_params:
         nom, niche, contenu, couleur, prix = boutique_trouvee
         couleur_theme = "#45f3ff"
         
-        # Sécurisation de l'affichage HTML pour éviter le code brut
-        contenu_propre = contenu.replace("```html", "").replace("```", "")
+        # Sécurisation totale contre le texte brut HTML
+        contenu_propre = contenu.replace("```html", "").replace("```", "").strip()
         
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
         h1, h2, h3, h4, h5, h6, p, span, label, div {{ color: #1c1d1f !important; }}
+        /* Forcer la couleur du contenu de la boutique au cas où */
+        .shop-container, .shop-container * {{ color: #1c1d1f !important; }}
         </style>
-        <div style='border: 3px solid {couleur_theme}; padding: 30px; border-radius: 12px; margin-top: 20px; background-color: #ffffff;'>
+        <div class="shop-container" style='border: 3px solid {couleur_theme}; padding: 30px; border-radius: 12px; margin-top: 20px; background-color: #ffffff;'>
             <h1 style='text-align: center; color: {couleur_theme} !important;'>🏬 {nom.upper()}</h1>
             <p style='text-align: center; font-style: italic; color: #555555 !important;'>Spécialiste : {niche}</p>
             <hr style='border: 1px solid {couleur_theme};'>
             <div style='font-size: 16px; margin: 20px 0;'>{contenu_propre}</div>
-            <p style='font-size: 24px; font-weight: bold; color: #10b981 !important; text-align: center;'>Prix unique : {prix} $</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Extraction du courriel du vendeur (stocké dans le champ couleur)
+        # Extraction du courriel du vendeur
         email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
         nom_formate = nom.lower().replace(" ", "-")
         url_redirection = f"https://streamlit.app{nom_formate}"
@@ -48,24 +49,23 @@ if "shop" in query_params:
                 <input type="hidden" name="_next" value="{url_redirection}">
                 <input type="hidden" name="_captcha" value="false">
                 <input type="hidden" name="Boutique_Provenance" value="{nom}">
-                <input type="hidden" name="Prix_Total" value="{prix} $">
                 
                 <div style='margin-bottom: 15px;'>
                     <label style='color: #1c1d1f !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Nom complet :</label>
-                    <input type="text" name="Nom_Client" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f;'>
+                    <input type="text" name="Nom_Client" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff;'>
                 </div>
                 
                 <div style='margin-bottom: 15px;'>
                     <label style='color: #1c1d1f !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Courriel :</label>
-                    <input type="email" name="Email_Client" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f;'>
+                    <input type="email" name="Email_Client" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff;'>
                 </div>
                 
                 <div style='margin-bottom: 20px;'>
                     <label style='color: #1c1d1f !important; font-weight: bold; display: block; margin-bottom: 5px;'>Adresse de livraison :</label>
-                    <input type="text" name="Adresse_Livraison" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f;'>
+                    <input type="text" name="Adresse_Livraison" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff;'>
                 </div>
                 
-                <button type="submit" style='width: 100%; background-color: #ff4b4b; color: white; border: none; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;'>
+                <button type="submit" style='width: 100%; background-color: #ff4b4b; color: white !important; border: none; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;'>
                     🔥 Confirmer mon achat ({prix} $)
                 </button>
             </form>
@@ -136,9 +136,9 @@ st.markdown("### ⚡ Activité de la communauté en direct")
 notifs = outils.recuperer_notifications()
 st.markdown(f"""
 <div style='background-color: #1e1e24; padding: 12px; border-radius: 8px; border-left: 5px solid #66fcf1; margin-bottom: 20px;'>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[0] if len(notifs) > 0 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[1] if len(notifs) > 1 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[2] if len(notifs) > 2 else ''}</span>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 0 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 1 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 2 else ''}</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -182,7 +182,6 @@ else:
         nom_shop = st.text_input("Nom de la boutique :")
         niche_shop = st.text_input("Thématique / Niche :", "Accessoires Sport")
         email_vendeur = st.text_input("Votre Courriel (pour recevoir les notifications d'achat) :")
-        prix_boutique = st.number_input("Définissez le prix unique des produits (\$) :", min_value=1.0, value=49.99, step=1.0)
         
         st.markdown("---")
         st.subheader("🛠️ Configuration du Catalogue")
@@ -192,12 +191,12 @@ else:
         )
         
         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
-            st.info("⚡ L'IA va chercher, analyser et rédiger automatiquement 10 fiches de produits hautement viraux actuellement tendance sur les réseaux pour votre thématique.")
+            st.info("⚡ L'IA s'occupe de tout : sélection de 10 produits tendances et fixation intelligente des prix.")
             description_souhaitee = "Sélectionne automatiquement les 10 meilleurs produits viraux et gagnants du moment"
-            nb_produits_prompt = 10
+            prix_boutique = 0.0  # L'IA gèrera le prix directement
         else:
             description_souhaitee = st.text_area("Décrivez précisément ce que la boutique va vendre :")
-            nb_produits_prompt = st.number_input("Nombre de produits à générer :", min_value=1, max_value=15, value=3, step=1)
+            prix_boutique = st.number_input("Définissez le prix unique des produits (\$) :", min_value=1.0, value=49.99, step=1.0)
 
         st.markdown("---")
         if st.button("⚡ Déployer la boutique flash"):
@@ -208,28 +207,36 @@ else:
                     st.session_state.credits_restants -= 1
                     with st.spinner("L'IA conçoit votre catalogue de produits..."):
                         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
-                            consigne_produits = f"Trouve et liste 10 produits gagnants et ultra-viraux actuellement sur TikTok, YouTube Shorts et Instagram Reels dans la niche '{niche_shop}'."
+                            consigne_produits = f"Trouve et liste 10 produits gagnants et viraux sur TikTok/YouTube Shorts dans la niche '{niche_shop}'. Pour chaque produit, invente un prix de vente e-commerce cohérent (ex: 34.99\(, 19.99\))."
+                            template_prix = "[Prix trouvé par l'IA] \$"
                         else:
-                            consigne_produits = f"Génère exactement {nb_produits_prompt} produits basés sur la description suivante de l'utilisateur : '{description_souhaitee}'."
+                            consigne_produits = f"Génère des produits basés sur la description utilisateur : '{description_souhaitee}'."
+                            template_prix = f"{prix_boutique} \$"
 
                         prompt = f"""
                         Rédige le contenu d'une page de vente e-commerce pour la boutique '{nom_shop}', spécialisée dans : {niche_shop}.
                         Consigne de génération : {consigne_produits}
                         
-                        Structure ta réponse TOUJOURS exactement comme ceci, en HTML propre (SANS utiliser de balises ```html ou de blocs de code ou de commentaires) :
-                        <h3>🏬 Bienvenue chez {nom_shop}</h3>
-                        <p><i>Votre expert en {niche_shop}</i></p>
-                        <hr>
+                        Structure ta réponse TOUJOURS exactement comme ceci en HTML propre.
+                        TRÈS IMPORTANT POUR LA LISIBILITÉ : Ajoute toujours style='color: #1c1d1f !important;' sur TOUTES les balises h3, h4, p, span, li pour éviter que le texte ne devienne blanc.
+                        NE METS JAMAIS de balises ```html ou de blocs de code ou de commentaires.
+                        
+                        <h3 style='color: #1c1d1f !important;'>🏬 Bienvenue chez {nom_shop}</h3>
+                        <p style='color: #555555 !important;'><i>Votre expert en {niche_shop}</i></p>
+                        <hr style='border: 1px solid #cbd5e1;'>
                         
                         Répète le bloc ci-dessous pour CHACUN des produits générés :
-                        <div style='margin-bottom: 25px; padding: 15px; border-left: 3px solid #ff4b4b; background-color: #f8fafc; border-radius: 4px;'>
+                        <div style='margin-bottom: 25px; padding: 15px; border-left: 4px solid #ff4b4b; background-color: #f8fafc; border-radius: 6px;'>
                             <h4 style='color: #1c1d1f !important; margin-top:0;'>📦 [Nom du Produit]</h4>
-                            <p style='color: #334155 !important;'>[Description attractive et marketing du produit].</p>
-                            <p style='font-weight: bold; color: #10b981 !important; margin-bottom:0;'>Prix : {prix_boutique} $</p>
+                            <p style='color: #334155 !important;'><b>Description :</b> [Description attractive du produit].</p>
+                            <p style='color: #b91c1c !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici de manière percutante pourquoi ce produit fait des millions de vues sur TikTok/YouTube et pourquoi tout le monde se l'arrache].</p>
+                            <p style='font-weight: bold; color: #10b981 !important; margin-bottom:0;'>Prix : {template_prix}</p>
                         </div>
                         """
                         resultat = outils.appeler_groq(prompt)
-                        if outils.ajouter_boutique(nom_shop, niche_shop, resultat, prix_boutique, couleur=email_vendeur):
+                        # Pour le prix global de la BDD, on garde la valeur saisie ou 39.99 par défaut pour le mode auto
+                        prix_final_bdd = prix_boutique if prix_boutique > 0 else 39.99
+                        if outils.ajouter_boutique(nom_shop, niche_shop, resultat, prix_final_bdd, couleur=email_vendeur):
                             st.success(f"🎉 Boutique '{nom_shop}' déployée !")
                             st.rerun()
                         else: st.error("Nom déjà pris.")
@@ -238,22 +245,32 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
-            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
+            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x)
             if choix:
                 nom, niche, contenu, couleur, prix = choix
                 couleur_theme = "#45f3ff"
                 nom_formate = nom.lower().replace(' ', '-')
                 lien_public = f"/?shop={nom_formate}"
                 
-                contenu_propre = contenu.replace("```html", "").replace("```", "")
+                # Nettoyage rigoureux contre le texte brut HTML
+                contenu_propre = contenu.replace("```html", "").replace("```", "").strip()
                 
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
-                st.markdown(f"<div style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px; background-color: #242432;'><h3>🏬 {nom.upper()}</h3><p><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}$</p><hr style='border: 1px solid {couleur_theme};'><div style='color: #ffffff !important;'>{contenu_propre}</div></div>", unsafe_allow_html=True)
+                
+                # Container admins avec injection CSS forcée pour contrer le texte blanc
+                st.markdown(f"""
+                <div style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px; background-color: #ffffff; color: #1c1d1f !important;'>
+                    <h3 style='color: #1c1d1f !important;'>🏬 {nom.upper()}</h3>
+                    <p style='color: #555555 !important;'><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}$</p>
+                    <hr style='border: 1px solid #cbd5e1;'>
+                    <div style='color: #1c1d1f !important;'>{contenu_propre}</div>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 if st.button("🛒 Simuler un achat client"):
                     outils.enregistrer_vente(nom, prix)
                     st.balloons()
-                    st.success(f"Panier de {prix}$ encaissé avec succès via l'Upsell !")
+                    st.success(f"Panier de {prix}$ encaissé avec succès !")
                     st.rerun()
 
     with tab4:
@@ -288,11 +305,11 @@ else:
         st.header("🌍 Le Conquérant Mondial")
         if not liste_shops: st.info("Aucune boutique disponible.")
         else:
-            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
+            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x)
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible[0]
-                texte_origine = shop_cible[2]
+                nom_boutique = shop_cible
+                texte_origine = shop_cible
                 
                 with st.spinner("Traduction par l'IA en cours..."):
                     prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
