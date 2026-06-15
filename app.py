@@ -10,12 +10,12 @@ if "shop" in query_params:
     shop_public = query_params["shop"]
     liste_shops_publics = outils.recuperer_boutiques()
     boutique_trouvee = None
-    for s in liste_shops_publics:
+    for s in list(liste_shops_publics):
         if s[0].lower().replace(" ", "-") == shop_public.lower():
             boutique_trouvee = s
             break
     if boutique_trouvee:
-        nom, niche, contenu, couleur = boutique_trouvee
+        nom, niche, contenu, couleur, prix = boutique_trouvee
         couleur_theme = couleur if couleur else "#45f3ff"
         st.markdown(f"""
         <style>
@@ -27,6 +27,7 @@ if "shop" in query_params:
             <p style='text-align: center; font-style: italic; color: #555555 !important;'>Spécialiste : {niche}</p>
             <hr style='border: 1px solid {couleur_theme};'>
             <div style='font-size: 16px; margin: 20px 0; color: #1c1d1f !important;'>{contenu}</div>
+            <p style='font-size: 22px; font-weight: bold; color: green !important; text-align: center;'>Prix unique : {prix} $</p>
         </div>
         """, unsafe_allow_html=True)
         with st.form("achat_client"):
@@ -36,8 +37,9 @@ if "shop" in query_params:
             adresse_client = st.text_input("Adresse de livraison :")
             if st.form_submit_button("🔥 Confirmer mon achat"):
                 if nom_client and email_client and adresse_client:
+                    outils.enregistrer_vente(nom, prix)
                     st.balloons()
-                    st.success(f"🎉 Merci {nom_client} ! Commande transmise.")
+                    st.success(f"🎉 Merci {nom_client} ! Votre commande a été transmise au vendeur.")
                 else: st.error("Veuillez remplir toutes les cases.")
         st.stop()
     else:
@@ -94,13 +96,22 @@ else:
 
 # --- 5. COMPOSANTS D'ACCUEIL ---
 st.markdown("### ⚡ Activité de la communauté en direct")
-st.markdown("<div style='background-color: #1e1e24; padding: 12px; border-radius: 8px; border-left: 5px solid #66fcf1; margin-bottom: 20px;'><span style='font-size:13px; color:#c5c6c7;'>• 💰 Utilisateur <b>Alex_MTL</b> a généré <b>340 $</b> en 24h avec son shop !</span><br><span style='font-size:13px; color:#c5c6c7;'>• 📡 Connexion établie avec le réseau de proxies rotatifs de <b>Scrape.do</b>.</span></div>", unsafe_allow_html=True)
+notifs = outils.recuperer_notifications()
+st.markdown(f"""
+<div style='background-color: #1e1e24; padding: 12px; border-radius: 8px; border-left: 5px solid #66fcf1; margin-bottom: 20px;'>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[0] if len(notifs) > 0 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[1] if len(notifs) > 1 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[2] if len(notifs) > 2 else ''}</span>
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("### 📊 État de votre Empire")
 col1, col2, col3 = st.columns(3)
-liste_shops = outils.recuperer_boutiques()
 
-col1.metric(label="💰 Chiffre d'Affaires estimé", value=f"{len(liste_shops) * 145} $")
+liste_shops = outils.recuperer_boutiques()
+ca_total_reel = outils.recuperer_ca_total()
+
+col1.metric(label="💰 Chiffre d'Affaires accumulé", value=f"{ca_total_reel[0] if isinstance(ca_total_reel, tuple) else ca_total_reel} $")
 col2.metric(label="🏬 Boutiques en ligne", value=f"{len(liste_shops)} Actives")
 col3.metric(label="🔋 Énergie (Actions)", value=f"{st.session_state.credits_restants} restants" if st.session_state.compte_actif else "0 restants")
 
@@ -125,20 +136,24 @@ else:
                     prompt = f"Rédige un court message de vente (max 3 phrases) pour proposer nos services marketing à l'entreprise propriétaire du site '{url_cible}'."
                     st.success("🤖 Message commercial rédigé par l'IA :")
                     st.write(outils.appeler_groq(prompt))
+                st.rerun()
             else: st.error("Plus d'énergie disponible.")
 
     with tab2:
         st.header("Usine à Magasins Éphémères")
         nom_shop = st.text_input("Nom de la boutique :")
         niche_shop = st.text_input("Thématique des produits :", "Accessoires Sport")
+        prix_boutique = st.number_input("Définissez le prix de vente de vos produits ($) :", min_value=1.0, value=49.99, step=1.0)
+        
         if st.button("⚡ Déployer la boutique flash"):
             if st.session_state.credits_restants > 0 and nom_shop:
                 st.session_state.credits_restants -= 1
                 with st.spinner("L'IA génère vos produits..."):
-                    prompt = f"Génère une liste de 3 produits e-commerce pour la thématique '{niche_shop}' avec prix et descriptions."
+                    prompt = f"Génère une liste de 3 produits de e-commerce pour la thématique '{niche_shop}' vendus à {prix_boutique}$. Donne leurs noms et descriptions."
                     resultat = outils.appeler_groq(prompt)
-                    if outils.ajouter_boutique(nom_shop, niche_shop, resultat):
+                    if outils.ajouter_boutique(nom_shop, niche_shop, resultat, prix_boutique):
                         st.success(f"🎉 Boutique '{nom_shop}' déployée !")
+                        st.rerun()
                     else: st.error("Nom déjà pris.")
             else: st.error("Champs vides ou énergie insuffisante.")
 
@@ -148,14 +163,17 @@ else:
         else:
             choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
-                nom, niche, contenu, couleur = choix
+                nom, niche, contenu, couleur, prix = choix
                 couleur_theme = couleur if couleur else "#45f3ff"
                 lien_public = f"https://streamlit.app{nom.lower().replace(' ', '-')}"
                 st.success(f"🔗 Lien public : `{lien_public}`")
-                st.markdown(f"<div style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px;'><h3>🏬 {nom.upper()}</h3><p><b>Thématique :</b> {niche} | 🟢 Hébergement Actif</p><hr style='border: 1px solid {couleur_theme};'><div>{contenu}</div></div>", unsafe_allow_html=True)
-                if st.button("🛒 Simuler un achat client (Test conversion)"):
+                st.markdown(f"<div style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px;'><h3>🏬 {nom.upper()}</h3><p><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}$</p><hr style='border: 1px solid {couleur_theme};'><div>{contenu}</div></div>", unsafe_allow_html=True)
+                
+                if st.button("🛒 Simuler un achat client"):
+                    outils.enregistrer_vente(nom, prix)
                     st.balloons()
-                    st.success("Panier augmenté de 15$ via le script d'Upsell.")
+                    st.success(f"Panier de {prix}$ encaissé avec succès via l'Upsell !")
+                    st.rerun()
 
     with tab4:
         st.header("🕵️‍♂️ Radar Espion")
@@ -198,6 +216,7 @@ else:
                 nouveau_texte = outils.appeler_groq(prompt, temperature=0.3)
                 outils.mettre_a_jour_boutique(shop_cible, nouveau_texte)
                 st.success("🎉 Traduction injectée ! Rafraîchissez l'onglet 'Mes Boutiques'.")
+                st.rerun()
 
     with tab8:
         st.header("💎 L'Usine à Rente Mensuelle Récurrente")
