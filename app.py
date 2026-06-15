@@ -219,13 +219,14 @@ else:
             shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                texte_origine = ""
-                for s in liste_shops:
-                    if s[0] == shop_cible: 
-                        texte_origine = s[2]
-                prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse : {texte_origine}"
-                nouveau_texte = outils.appeler_groq(prompt, temperature=0.3)
-                outils.mettre_a_jour_boutique(shop_cible, nouveau_texte)
+                nom_boutique = shop_cible[0]
+                texte_origine = shop_cible[2]
+                
+                with st.spinner("Traduction par l'IA en cours..."):
+                    prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse : {texte_origine}"
+                    nouveau_texte = outils.appeler_groq(prompt, temperature=0.3)
+                    outils.mettre_a_jour_boutique(nom_boutique, nouveau_texte)
+                    
                 st.success("🎉 Traduction injectée ! Rafraîchissez l'onglet 'Mes Boutiques'.")
                 st.rerun()
 
