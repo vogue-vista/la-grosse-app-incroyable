@@ -3,9 +3,9 @@ import streamlit as st
 import requests
 from groq import Groq
 
-# Recouvrement automatique des clés sécurisées dans Streamlit Cloud
+# Extraction sécurisée des clés d'API dans Streamlit Cloud
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
-SCRAP_IO_KEY = st.secrets["SCRAP_IO_KEY"]
+SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
 def initialiser_base_de_donnees():
     conn = sqlite3.connect("empire.db")
@@ -34,16 +34,24 @@ def appeler_groq(prompt, temperature=0.7):
     except Exception as e:
         return f"Erreur avec l'IA Groq : {e}"
 
-def executer_scraping_reel(metier, ville):
-    # Exemple de structure d'appel réel vers l'API scrap.io
-    # url = f"https://scrap.io{SCRAP_IO_KEY}&category={metier}&city={ville}"
-    # response = requests.get(url).json()
-    
-    # Simulation du format renvoyé par l'API pour votre démonstration
-    return [
-        {"nom": f"{metier} Dynamique {ville}", "site": "Aucun site internet répertorié"},
-        {"nom": f"Groupe Experts {metier}", "site": f"www.expert-{metier}.ca"}
-    ]
+def executer_scraping_real(cible_url):
+    """
+    Exécute un appel réel à l'API Scrape.do en lui passant une URL cible.
+    Scrape.do s'occupe de contourner les anti-bots et renvoie le HTML brut.
+    """
+    try:
+        # URL officielle de l'API Scrape.do pour exécuter la requête via proxy rotatif
+        url_api = f"http://scrape.do{SCRAPE_DO_KEY}&url={cible_url}"
+        response = requests.get(url_api)
+        
+        if response.status_code == 200:
+            # Pour la démonstration client, on extrait un extrait du HTML reçu
+            html_brut = response.text[:500] 
+            return f"✅ Données extraites avec succès via Scrape.do !\n\nExtrait du code source de la page ciblée :\n{html_brut}..."
+        else:
+            return f"❌ Échec du scraping via Scrape.do. Code erreur : {response.status_code}"
+    except Exception as e:
+        return f"Erreur technique de connexion à Scrape.do : {e}"
 
 def ajouter_boutique(nom, niche, contenu, couleur="#45f3ff"):
     conn = sqlite3.connect("empire.db")
