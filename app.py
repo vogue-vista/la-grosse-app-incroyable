@@ -1,5 +1,6 @@
 import streamlit as st
 import outils
+import re
 
 outils.initialiser_base_de_donnees()
 
@@ -18,13 +19,16 @@ if "shop" in query_params:
         nom, niche, contenu, couleur, prix = boutique_trouvee
         couleur_theme = "#45f3ff"
         
-        # Sécurisation totale contre le texte brut HTML
+        # NETTOYAGE ULTIME PAR REGEX : On extrait uniquement ce qui est entre les balises h3 et div
         contenu_propre = contenu.replace("```html", "").replace("```", "").strip()
+        match = re.search(r"(<h3.*>.*<\/div>|<h3.*>.*)", contenu_propre, re.DOTALL)
+        if match:
+            contenu_propre = match.group(1)
         
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
-        h1, h2, h3, h4, h5, h6, p, span, label, div {{ color: #1c1d1f !important; }}
+        h1, h2, h3, h4, h5, p, span, label, div {{ color: #1c1d1f !important; }}
         .shop-container, .shop-container * {{ color: #1c1d1f !important; }}
         </style>
         <div class="shop-container" style='border: 3px solid {couleur_theme}; padding: 30px; border-radius: 12px; margin-top: 20px; background-color: #ffffff;'>
@@ -35,7 +39,6 @@ if "shop" in query_params:
         </div>
         """, unsafe_allow_html=True)
         
-        # Extraction du courriel du vendeur
         email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
         nom_formate = nom.lower().replace(" ", "-")
         url_redirection = f"https://streamlit.app{nom_formate}"
@@ -206,7 +209,7 @@ else:
                     st.session_state.credits_restants -= 1
                     with st.spinner("L'IA conçoit votre catalogue de produits..."):
                         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
-                            consigne_produits = f"Trouve et liste 10 produits gagnants et viraux sur TikTok/YouTube Shorts dans la niche '{niche_shop}'. Pour chaque produit, invente un prix de vente e-commerce cohérent (ex: 34.99, 19.99)."
+                            consigne_produits = f"Trouve et liste exactement 10 produits très gagnants et viraux sur TikTok/YouTube Shorts dans la niche '{niche_shop}'. Pour chaque produit, donne un prix de vente e-commerce cohérent (ex: 34.99, 19.99)."
                             template_prix = "[Prix trouvé par l'IA] \$"
                         else:
                             consigne_produits = f"Génère des produits basés sur la description utilisateur : '{description_souhaitee}'."
@@ -217,18 +220,18 @@ else:
                         Consigne de génération : {consigne_produits}
                         
                         Structure ta réponse TOUJOURS exactement comme ceci en HTML propre.
-                        TRÈS IMPORTANT POUR LA LISIBILITÉ : Ajoute toujours style='color: #1c1d1f !important;' sur TOUTES les balises h3, h4, p, span, li pour éviter que le texte ne devienne blanc.
+                        ATTENTION POUR L'ADMINISTRATION : Chaque fiche produit doit utiliser class='prod-box' avec un style sombre propre (fond #242432, texte blanc #ffffff) pour ne pas faire de blanc sur blanc.
                         NE METS JAMAIS de balises ```html ou de blocs de code ou de commentaires.
                         
-                        <h3 style='color: #1c1d1f !important;'>🏬 Bienvenue chez {nom_shop}</h3>
-                        <p style='color: #555555 !important;'><i>Votre expert en {niche_shop}</i></p>
+                        <h3>🏬 Bienvenue chez {nom_shop}</h3>
+                        <p><i>Votre expert en {niche_shop}</i></p>
                         <hr style='border: 1px solid #cbd5e1;'>
                         
                         Répète le bloc ci-dessous pour CHACUN des produits générés :
-                        <div style='margin-bottom: 25px; padding: 15px; border-left: 4px solid #ff4b4b; background-color: #f8fafc; border-radius: 6px;'>
-                            <h4 style='color: #1c1d1f !important; margin-top:0;'>📦 [Nom du Produit]</h4>
-                            <p style='color: #334155 !important;'><b>Description :</b> [Description attractive du produit].</p>
-                            <p style='color: #b91c1c !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici de manière percutante pourquoi ce produit fait des millions de vues sur TikTok/YouTube].</p>
+                        <div class='prod-box' style='margin-bottom: 25px; padding: 20px; border-left: 4px solid #ff4b4b; background-color: #242432; border-radius: 6px; color: #ffffff !important;'>
+                            <h4 style='color: #66fcf1 !important; margin-top:0;'>📦 [Nom du Produit]</h4>
+                            <p style='color: #e2e8f0 !important;'><b>Description :</b> [Description attractive du produit].</p>
+                            <p style='color: #ffb703 !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici pourquoi ce produit fait des millions de vues sur TikTok/YouTube et pourquoi les clients se l'arrachent].</p>
                             <p style='font-weight: bold; color: #10b981 !important; margin-bottom:0;'>Prix : {template_prix}</p>
                         </div>
                         """
@@ -243,7 +246,6 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
-            # CORRECTION CRUCIALE DE L'ERREUR TYPEERROR : format_func prend maintenant x[0] pour n'extraire que le nom de la boutique (chaîne brute)
             choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
                 nom, niche, contenu, couleur, prix = choix
@@ -251,16 +253,26 @@ else:
                 nom_formate = nom.lower().replace(' ', '-')
                 lien_public = f"/?shop={nom_formate}"
                 
+                # NETTOYAGE PAR REGEX POUR L'ADMINISTRATION ÉGALEMENT
                 contenu_propre = contenu.replace("```html", "").replace("```", "").strip()
+                match_admin = re.search(r"(<h3.*>.*<\/div>|<h3.*>.*)", contenu_propre, re.DOTALL)
+                if match_admin:
+                    contenu_propre = match_admin.group(1)
                 
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
                 
+                # Le container administrateur force maintenant un fond sombre et du texte clair pour contrer le blanc sur blanc
                 st.markdown(f"""
-                <div style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px; background-color: #ffffff; color: #1c1d1f !important;'>
-                    <h3 style='color: #1c1d1f !important;'>🏬 {nom.upper()}</h3>
-                    <p style='color: #555555 !important;'><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}\$</p>
+                <style>
+                .admin-preview, .admin-preview p, .admin-preview h3, .admin-preview span {{ color: #ffffff !important; }}
+                .admin-preview .prod-box {{ background-color: #1e1e28 !important; border: 1px solid #3e3e4f; }}
+                .admin-preview .prod-box * {{ color: #ffffff !important; }}
+                </style>
+                <div class="admin-preview" style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px; background-color: #14141b; color: #ffffff !important;'>
+                    <h3>🏬 {nom.upper()}</h3>
+                    <p><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}\$</p>
                     <hr style='border: 1px solid #cbd5e1;'>
-                    <div style='color: #1c1d1f !important;'>{contenu_propre}</div>
+                    <div>{contenu_propre}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
