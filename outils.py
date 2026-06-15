@@ -1,3 +1,6 @@
+# ==========================================
+#  COLLEZ CE CODE DANS : outils.py
+# ==========================================
 import sqlite3
 import streamlit as st
 import requests
@@ -10,15 +13,32 @@ SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 def initialiser_base_de_donnees():
     conn = sqlite3.connect("empire.db")
     cursor = conn.cursor()
+    # Ajout de la colonne 'prix' et création de la table pour les statistiques d'argent et les logs de notifications
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nom TEXT UNIQUE,
             niche TEXT,
             contenu TEXT,
-            couleur TEXT
+            couleur TEXT,
+            prix REAL DEFAULT 0.0
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS statistiques (
+            cle TEXT PRIMARY KEY,
+            valeur REAL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            texte TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    # Initialisation du chiffre d'affaires à 0 si la table est neuve
+    cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
 
@@ -26,8 +46,7 @@ def appeler_groq(prompt, temperature=0.7):
     try:
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
-            # CORRECTION : Utilisation du modèle Llama 3.1 officiel et actif
-            model="llama-3.1-8b-instant",
+            model="llama-3.1-8b-instant",  # Modèle officiel et corrigé partout
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature
         )
@@ -47,11 +66,13 @@ def executer_scraping_real(cible_url):
     except Exception as e:
         return f"Erreur technique de connexion à Scrape.do : {e}"
 
-def ajouter_boutique(nom, niche, contenu, couleur="#45f3ff"):
+def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
     conn = sqlite3.connect("empire.db")
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO boutiques (nom, niche, contenu, couleur) VALUES (?, ?, ?, ?)", (nom, niche, contenu, couleur))
+        cursor.execute("INSERT INTO boutiques (nom, niche, contenu, couleur, prix) VALUES (?, ?, ?, ?, ?)", (nom, niche, contenu, couleur, prix))
+        # Ajout d'une vraie notification dynamique dans l'historique
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Nouvelle boutique '{nom}' déployée dans la niche {niche} !",))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -62,10 +83,10 @@ def ajouter_boutique(nom, niche, contenu, couleur="#45f3ff"):
 def recuperer_boutiques():
     conn = sqlite3.connect("empire.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT nom, niche, contenu, couleur FROM boutiques")
+    cursor.execute("SELECT nom, niche, contenu, couleur, prix FROM boutiques")
     liste = cursor.fetchall()
     conn.close()
-    return liste
+    return list(liste)
 
 def mettre_a_jour_boutique(nom, nouveau_contenu):
     conn = sqlite3.connect("empire.db")
@@ -73,3 +94,36 @@ def mettre_a_jour_boutique(nom, nouveau_contenu):
     cursor.execute("UPDATE boutiques SET contenu = ? WHERE nom = ?", (nouveau_contenu, nom))
     conn.commit()
     conn.close()
+
+def recuperer_ca_total():
+    conn = sqlite3.connect("empire.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT valeur FROM statistiques WHERE cle = 'ca_total'")
+    res = cursor.fetchone()
+    conn.close()
+    return res[0] if res else 0.0
+
+def enregistrer_vente(nom_boutique, montant):
+    conn = sqlite3.connect("empire.db")
+    cursor = conn.cursor()
+    # On incrémente le chiffre d'affaires global de l'utilisateur
+    cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (montant,))
+    # On génère une nouvelle notification dynamique visible sur l'accueil
+    cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Vente ! Un client vient de dépenser {montant}$ sur la boutique '{nom_boutique}' !",))
+    conn.commit()
+    conn.close()
+
+def recuperer_notifications():
+    conn = sqlite3.connect("empire.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT texte FROM notifications ORDER BY id DESC LIMIT 3")
+    res = cursor.fetchall()
+    conn.close()
+    # Si la base est neuve, on affiche des messages par défaut
+    if not res:
+        return [
+            "🟢 Système en attente d'activité commerciale...",
+            "📡 Connexion établie avec le réseau de proxies rotatifs de Scrape.do.",
+            "🤖 IA Groq synchronisée et prête à propulser vos ventes."
+        ]
+    return [r[0] for r in res]
