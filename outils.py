@@ -1,6 +1,3 @@
-# ==========================================
-#  COLLEZ CE CODE DANS : outils.py
-# ==========================================
 import sqlite3
 import streamlit as st
 import requests
@@ -13,17 +10,27 @@ SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 def initialiser_base_de_donnees():
     conn = sqlite3.connect("empire.db")
     cursor = conn.cursor()
-    # Ajout de la colonne 'prix' et création de la table pour les statistiques d'argent et les logs de notifications
+    
+    # 1. Création de la table de base si elle n'existe pas
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nom TEXT UNIQUE,
             niche TEXT,
             contenu TEXT,
-            couleur TEXT,
-            prix REAL DEFAULT 0.0
+            couleur TEXT
         )
     """)
+    
+    # SÉCURITÉ ANTI-CRASH : On vérifie si la colonne 'prix' existe déjà
+    cursor.execute("PRAGMA table_info(boutiques)")
+    colonnes = [col[1] for col in cursor.fetchall()]
+    
+    # Si 'prix' n'est pas là, on l'ajoute proprement en direct
+    if "prix" not in colonnes:
+        cursor.execute("ALTER TABLE boutiques ADD COLUMN prix REAL DEFAULT 0.0")
+        
+    # 2. Création des autres tables requises pour les ventes et logs
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS statistiques (
             cle TEXT PRIMARY KEY,
@@ -37,7 +44,8 @@ def initialiser_base_de_donnees():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # Initialisation du chiffre d'affaires à 0 si la table est neuve
+    
+    # Initialisation du chiffre d'affaires à 0 si absent
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
@@ -46,7 +54,7 @@ def appeler_groq(prompt, temperature=0.7):
     try:
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",  # Modèle officiel et corrigé partout
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature
         )
@@ -71,7 +79,6 @@ def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO boutiques (nom, niche, contenu, couleur, prix) VALUES (?, ?, ?, ?, ?)", (nom, niche, contenu, couleur, prix))
-        # Ajout d'une vraie notification dynamique dans l'historique
         cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Nouvelle boutique '{nom}' déployée dans la niche {niche} !",))
         conn.commit()
         return True
@@ -106,9 +113,7 @@ def recuperer_ca_total():
 def enregistrer_vente(nom_boutique, montant):
     conn = sqlite3.connect("empire.db")
     cursor = conn.cursor()
-    # On incrémente le chiffre d'affaires global de l'utilisateur
     cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (montant,))
-    # On génère une nouvelle notification dynamique visible sur l'accueil
     cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Vente ! Un client vient de dépenser {montant}$ sur la boutique '{nom_boutique}' !",))
     conn.commit()
     conn.close()
@@ -119,7 +124,6 @@ def recuperer_notifications():
     cursor.execute("SELECT texte FROM notifications ORDER BY id DESC LIMIT 3")
     res = cursor.fetchall()
     conn.close()
-    # Si la base est neuve, on affiche des messages par défaut
     if not res:
         return [
             "🟢 Système en attente d'activité commerciale...",
