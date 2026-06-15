@@ -25,7 +25,6 @@ if "shop" in query_params:
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
         h1, h2, h3, h4, h5, h6, p, span, label, div {{ color: #1c1d1f !important; }}
-        /* Forcer la couleur du contenu de la boutique au cas où */
         .shop-container, .shop-container * {{ color: #1c1d1f !important; }}
         </style>
         <div class="shop-container" style='border: 3px solid {couleur_theme}; padding: 30px; border-radius: 12px; margin-top: 20px; background-color: #ffffff;'>
@@ -193,7 +192,7 @@ else:
         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
             st.info("⚡ L'IA s'occupe de tout : sélection de 10 produits tendances et fixation intelligente des prix.")
             description_souhaitee = "Sélectionne automatiquement les 10 meilleurs produits viraux et gagnants du moment"
-            prix_boutique = 0.0  # L'IA gèrera le prix directement
+            prix_boutique = 0.0
         else:
             description_souhaitee = st.text_area("Décrivez précisément ce que la boutique va vendre :")
             prix_boutique = st.number_input("Définissez le prix unique des produits (\$) :", min_value=1.0, value=49.99, step=1.0)
@@ -207,7 +206,7 @@ else:
                     st.session_state.credits_restants -= 1
                     with st.spinner("L'IA conçoit votre catalogue de produits..."):
                         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
-                            consigne_produits = f"Trouve et liste 10 produits gagnants et viraux sur TikTok/YouTube Shorts dans la niche '{niche_shop}'. Pour chaque produit, invente un prix de vente e-commerce cohérent (ex: 34.99\(, 19.99\))."
+                            consigne_produits = f"Trouve et liste 10 produits gagnants et viraux sur TikTok/YouTube Shorts dans la niche '{niche_shop}'. Pour chaque produit, invente un prix de vente e-commerce cohérent (ex: 34.99, 19.99)."
                             template_prix = "[Prix trouvé par l'IA] \$"
                         else:
                             consigne_produits = f"Génère des produits basés sur la description utilisateur : '{description_souhaitee}'."
@@ -229,12 +228,11 @@ else:
                         <div style='margin-bottom: 25px; padding: 15px; border-left: 4px solid #ff4b4b; background-color: #f8fafc; border-radius: 6px;'>
                             <h4 style='color: #1c1d1f !important; margin-top:0;'>📦 [Nom du Produit]</h4>
                             <p style='color: #334155 !important;'><b>Description :</b> [Description attractive du produit].</p>
-                            <p style='color: #b91c1c !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici de manière percutante pourquoi ce produit fait des millions de vues sur TikTok/YouTube et pourquoi tout le monde se l'arrache].</p>
+                            <p style='color: #b91c1c !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici de manière percutante pourquoi ce produit fait des millions de vues sur TikTok/YouTube].</p>
                             <p style='font-weight: bold; color: #10b981 !important; margin-bottom:0;'>Prix : {template_prix}</p>
                         </div>
                         """
                         resultat = outils.appeler_groq(prompt)
-                        # Pour le prix global de la BDD, on garde la valeur saisie ou 39.99 par défaut pour le mode auto
                         prix_final_bdd = prix_boutique if prix_boutique > 0 else 39.99
                         if outils.ajouter_boutique(nom_shop, niche_shop, resultat, prix_final_bdd, couleur=email_vendeur):
                             st.success(f"🎉 Boutique '{nom_shop}' déployée !")
@@ -245,23 +243,22 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
-            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x)
+            # CORRECTION CRUCIALE DE L'ERREUR TYPEERROR : format_func prend maintenant x[0] pour n'extraire que le nom de la boutique (chaîne brute)
+            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
                 nom, niche, contenu, couleur, prix = choix
                 couleur_theme = "#45f3ff"
                 nom_formate = nom.lower().replace(' ', '-')
                 lien_public = f"/?shop={nom_formate}"
                 
-                # Nettoyage rigoureux contre le texte brut HTML
                 contenu_propre = contenu.replace("```html", "").replace("```", "").strip()
                 
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
                 
-                # Container admins avec injection CSS forcée pour contrer le texte blanc
                 st.markdown(f"""
                 <div style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px; background-color: #ffffff; color: #1c1d1f !important;'>
                     <h3 style='color: #1c1d1f !important;'>🏬 {nom.upper()}</h3>
-                    <p style='color: #555555 !important;'><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}$</p>
+                    <p style='color: #555555 !important;'><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}\$</p>
                     <hr style='border: 1px solid #cbd5e1;'>
                     <div style='color: #1c1d1f !important;'>{contenu_propre}</div>
                 </div>
@@ -270,7 +267,7 @@ else:
                 if st.button("🛒 Simuler un achat client"):
                     outils.enregistrer_vente(nom, prix)
                     st.balloons()
-                    st.success(f"Panier de {prix}$ encaissé avec succès !")
+                    st.success(f"Panier de {prix}\$ encaissé avec succès !")
                     st.rerun()
 
     with tab4:
@@ -305,11 +302,11 @@ else:
         st.header("🌍 Le Conquérant Mondial")
         if not liste_shops: st.info("Aucune boutique disponible.")
         else:
-            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x)
+            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible
-                texte_origine = shop_cible
+                nom_boutique = shop_cible[0]
+                texte_origine = shop_cible[2]
                 
                 with st.spinner("Traduction par l'IA en cours..."):
                     prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
