@@ -26,7 +26,8 @@ def appeler_groq(prompt, temperature=0.7):
     try:
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
-            model="llama3-8b-8098",
+            # CORRECTION : Utilisation du modèle Llama 3.1 officiel et actif
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature
         )
@@ -35,17 +36,10 @@ def appeler_groq(prompt, temperature=0.7):
         return f"Erreur avec l'IA Groq : {e}"
 
 def executer_scraping_real(cible_url):
-    """
-    Exécute un appel réel à l'API Scrape.do en lui passant une URL cible.
-    Scrape.do s'occupe de contourner les anti-bots et renvoie le HTML brut.
-    """
     try:
-        # URL officielle de l'API Scrape.do pour exécuter la requête via proxy rotatif
         url_api = f"http://scrape.do{SCRAPE_DO_KEY}&url={cible_url}"
         response = requests.get(url_api)
-        
         if response.status_code == 200:
-            # Pour la démonstration client, on extrait un extrait du HTML reçu
             html_brut = response.text[:500] 
             return f"✅ Données extraites avec succès via Scrape.do !\n\nExtrait du code source de la page ciblée :\n{html_brut}..."
         else:
