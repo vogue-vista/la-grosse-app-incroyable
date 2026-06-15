@@ -87,7 +87,7 @@ st.sidebar.markdown(f"**Votre Rang :** `{grade}`")
 
 # --- 4. NETTOYAGE DES STYLES VISUELS ---
 if mode_affichage == "Standard (Épuré)":
-    st.markdown("<style>.stApp { background-color: #ffffff !important; color: #1c1d1f !important; } h1, h2, h3, h4, h5, h6, p, span, label { color: #1c1d1f !important; } .stTabs button p { color: #1c1d1f !important; }</style>", unsafe_allow_html=True)
+    st.markdown("<style>.stApp { background-color: #1a1a24 !important; color: #ffffff !important; } h1, h2, h3, h4, h5, h6, p, span, label { color: #ffffff !important; } .stTabs button p { color: #ffffff !important; } div[data-testid='stMetric'] { background-color: #242432; border-radius: 10px; padding: 10px; }</style>", unsafe_allow_html=True)
     st.title("🚀 Business Automatique Dashboard")
 elif mode_affichage == "Jeux Vidéo (RPG)":
     st.markdown("<style>.stApp { background-color: #0b0c10 !important; color: #c5c6c7 !important; } h1 { color: #66fcf1 !important; text-shadow: 0 0 10px #66fcf1; text-align: center; } h2, h3, h4, h5, h6, p, span, label { color: #c5c6c7 !important; } div[data-testid='stMetric'] { background-color: #1f2833; border: 2px solid #45f3ff; border-radius: 10px; padding: 10px; } .stTabs button p { color: #45f3ff !important; }</style>", unsafe_allow_html=True)
@@ -95,7 +95,7 @@ elif mode_affichage == "Jeux Vidéo (RPG)":
 else:
     if st.session_state.forfait != "Élite":
         st.sidebar.warning("🔒 Option Custom réservée au forfait Élite.")
-        st.markdown("<style>.stApp { background-color: #ffffff !important; color: #1c1d1f !important; } h1, h2, h3, h4, h5, h6, p, span, label { color: #1c1d1f !important; }</style>", unsafe_allow_html=True)
+        st.markdown("<style>.stApp { background-color: #1a1a24 !important; color: #ffffff !important; } h1, h2, h3, h4, h5, h6, p, span, label { color: #ffffff !important; }</style>", unsafe_allow_html=True)
         st.title("🚀 Business Automatique Dashboard")
     else:
         couleur_custom = st.sidebar.color_picker("Ajustez votre néon personnalisé :", "#FF00FF")
@@ -178,7 +178,7 @@ else:
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
                 st.markdown(f"<div style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px;'><h3>🏬 {nom.upper()}</h3><p><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}$</p><hr style='border: 1px solid {couleur_theme};'><div>{contenu}</div></div>", unsafe_allow_html=True)
                 
-                if st.button("🛒 Simuler un achat client"):
+                if st.button("🛒 Simuler un purchase client"):
                     outils.enregistrer_vente(nom, prix)
                     st.balloons()
                     st.success(f"Panier de {prix}$ encaissé avec succès via l'Upsell !")
@@ -195,7 +195,7 @@ else:
     with tab5:
         st.header("💡 Laboratoire de R&D : Concepteur de Produits")
         if st.session_state.forfait != "Élite":
-            st.markdown("<div style='background-color: #2c1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4b4b; text-align: center;'><h3>🔒 Réservé aux Membres Élite</h3><p>La R&D par IA est réservée au forfait Élite.</p></div>", unsafe_allow_html=True)
+            st.markdown("<div style='background-color: #2c1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4b4b; text-align: center;'><h3>🔒 Réservé aux Membres Élite</h3><p>La R&D par IA is réservée au forfait Élite.</p></div>", unsafe_allow_html=True)
         else:
             st.success("🔓 Accès Élite Validé.")
             idee = st.text_input("Votre idée :")
@@ -217,17 +217,17 @@ else:
         if not liste_shops: st.info("Aucune boutique disponible.")
         else:
             shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
-            langue = st.selectbox("Langue cible :", ["Anglais 🇺🇸", "Espagnol 🇪🇸"])
+            langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
                 nom_boutique = shop_cible[0]
                 texte_origine = shop_cible[2]
                 
                 with st.spinner("Traduction par l'IA en cours..."):
-                    prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse : {texte_origine}"
+                    prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
                     nouveau_texte = outils.appeler_groq(prompt, temperature=0.3)
                     outils.mettre_a_jour_boutique(nom_boutique, nouveau_texte)
                     
-                st.success("🎉 Traduction injectée ! Rafraîchissez l'onglet 'Mes Boutiques'.")
+                st.success("🎉 Traduction / Optimisation injectée ! Rafraîchissez l'onglet 'Mes Boutiques'.")
                 st.rerun()
 
     with tab8:
