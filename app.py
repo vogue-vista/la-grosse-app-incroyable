@@ -1,6 +1,5 @@
 import streamlit as st
 import outils
-import re
 
 outils.initialiser_base_de_donnees()
 
@@ -17,25 +16,29 @@ if "shop" in query_params:
             break
     if boutique_trouvee:
         nom, niche, contenu, couleur, prix = boutique_trouvee
-        couleur_theme = "#45f3ff"
+        couleur_theme = "#ff4b4b"
         
-        # NETTOYAGE ULTIME PAR REGEX : On extrait uniquement ce qui est entre les balises h3 et div
-        contenu_propre = contenu.replace("```html", "").replace("```", "").strip()
-        match = re.search(r"(<h3.*>.*<\/div>|<h3.*>.*)", contenu_propre, re.DOTALL)
-        if match:
-            contenu_propre = match.group(1)
+        # Nettoyage rigoureux du contenu pour le client public
+        contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
         
+        # SÉCURITÉ : On s'assure que les boîtes générées par l'IA s'affichent sur fond blanc/gris clair pour le client public
+        contenu_client = contenu_client.replace("background-color: #242432;", "background-color: #f8fafc; border: 1px solid #e2e8f0;")
+        contenu_client = contenu_client.replace("color: #ffffff !important;", "color: #1c1d1f !important;")
+        contenu_client = contenu_client.replace("color: #e2e8f0 !important;", "color: #334155 !important;")
+        contenu_client = contenu_client.replace("color: #66fcf1 !important;", "color: #0f172a !important;")
+
+        # Interface du client public (Propre, lumineuse et professionnelle)
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
         h1, h2, h3, h4, h5, p, span, label, div {{ color: #1c1d1f !important; }}
         .shop-container, .shop-container * {{ color: #1c1d1f !important; }}
         </style>
-        <div class="shop-container" style='border: 3px solid {couleur_theme}; padding: 30px; border-radius: 12px; margin-top: 20px; background-color: #ffffff;'>
-            <h1 style='text-align: center; color: {couleur_theme} !important;'>🏬 {nom.upper()}</h1>
+        <div class="shop-container" style='border: 3px solid {couleur_theme}; padding: 30px; border-radius: 12px; margin-top: 20px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);'>
+            <h1 style='text-align: center; color: {couleur_theme} !important; font-family: sans-serif;'>🏬 {nom.upper()}</h1>
             <p style='text-align: center; font-style: italic; color: #555555 !important;'>Spécialiste : {niche}</p>
-            <hr style='border: 1px solid {couleur_theme};'>
-            <div style='font-size: 16px; margin: 20px 0;'>{contenu_propre}</div>
+            <hr style='border: 1px solid #e2e8f0;'>
+            <div style='font-size: 16px; margin: 20px 0; color: #1c1d1f !important;'>{contenu_client}</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -43,31 +46,33 @@ if "shop" in query_params:
         nom_formate = nom.lower().replace(" ", "-")
         url_redirection = f"https://streamlit.app{nom_formate}"
 
+        # Injection sécurisée du formulaire d'achat sans aucun texte brut possible
         st.markdown(f"""
-        <div style='background-color: #f8fafc; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 25px;'>
-            <h3 style='color: #1c1d1f !important; margin-bottom: 20px;'>🛒 Finaliser votre commande en 1-Clic</h3>
+        <div style='background-color: #f1f5f9; padding: 25px; border-radius: 12px; border: 1px solid #cbd5e1; margin-top: 25px;'>
+            <h3 style='color: #0f172a !important; margin-bottom: 20px; font-family: sans-serif;'>🛒 Finaliser votre commande en 1-Clic</h3>
             <form action="https://formsubmit.co{email_vendeur_cible}" method="POST">
                 <input type="hidden" name="_subject" value="🚨 NOUVELLE COMMANDE - Boutique {nom}">
                 <input type="hidden" name="_next" value="{url_redirection}">
                 <input type="hidden" name="_captcha" value="false">
                 <input type="hidden" name="Boutique_Provenance" value="{nom}">
+                <input type="hidden" name="Prix_Total" value="{prix} $">
                 
                 <div style='margin-bottom: 15px;'>
-                    <label style='color: #1c1d1f !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Nom complet :</label>
-                    <input type="text" name="Nom_Client" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff;'>
+                    <label style='color: #334155 !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Nom complet :</label>
+                    <input type="text" name="Nom_Client" required style='width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff !important;'>
                 </div>
                 
                 <div style='margin-bottom: 15px;'>
-                    <label style='color: #1c1d1f !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Courriel :</label>
-                    <input type="email" name="Email_Client" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff;'>
+                    <label style='color: #334155 !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Courriel :</label>
+                    <input type="email" name="Email_Client" required style='width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff !important;'>
                 </div>
                 
                 <div style='margin-bottom: 20px;'>
-                    <label style='color: #1c1d1f !important; font-weight: bold; display: block; margin-bottom: 5px;'>Adresse de livraison :</label>
-                    <input type="text" name="Adresse_Livraison" required style='width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff;'>
+                    <label style='color: #334155 !important; font-weight: bold; display: block; margin-bottom: 5px;'>Adresse de livraison :</label>
+                    <input type="text" name="Adresse_Livraison" required style='width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff !important;'>
                 </div>
                 
-                <button type="submit" style='width: 100%; background-color: #ff4b4b; color: white !important; border: none; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;'>
+                <button type="submit" style='width: 100%; background-color: #ff4b4b; color: white !important; border: none; padding: 16px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s;'>
                     🔥 Confirmer mon achat ({prix} $)
                 </button>
             </form>
@@ -219,19 +224,13 @@ else:
                         Rédige le contenu d'une page de vente e-commerce pour la boutique '{nom_shop}', spécialisée dans : {niche_shop}.
                         Consigne de génération : {consigne_produits}
                         
-                        Structure ta réponse TOUJOURS exactement comme ceci en HTML propre.
-                        ATTENTION POUR L'ADMINISTRATION : Chaque fiche produit doit utiliser class='prod-box' avec un style sombre propre (fond #242432, texte blanc #ffffff) pour ne pas faire de blanc sur blanc.
-                        NE METS JAMAIS de balises ```html ou de blocs de code ou de commentaires.
-                        
-                        <h3>🏬 Bienvenue chez {nom_shop}</h3>
-                        <p><i>Votre expert en {niche_shop}</i></p>
-                        <hr style='border: 1px solid #cbd5e1;'>
+                        Génère UNIQUEMENT les fiches produits au format HTML pur. SANS utiliser de balises ```html ou de blocs de code ou de commentaires. SANS écrire de balise div globale de preview. Commencez directement par les fiches.
                         
                         Répète le bloc ci-dessous pour CHACUN des produits générés :
-                        <div class='prod-box' style='margin-bottom: 25px; padding: 20px; border-left: 4px solid #ff4b4b; background-color: #242432; border-radius: 6px; color: #ffffff !important;'>
+                        <div class='prod-box' style='margin-bottom: 25px; padding: 20px; border-left: 4px solid #ff4b4b; background-color: #242432; border-radius: 6px;'>
                             <h4 style='color: #66fcf1 !important; margin-top:0;'>📦 [Nom du Produit]</h4>
-                            <p style='color: #e2e8f0 !important;'><b>Description :</b> [Description attractive du produit].</p>
-                            <p style='color: #ffb703 !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici pourquoi ce produit fait des millions de vues sur TikTok/YouTube et pourquoi les clients se l'arrachent].</p>
+                            <p style='color: #ffffff !important;'><b>Description :</b> [Description attractive du produit].</p>
+                            <p style='color: #ffb703 !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici pourquoi ce produit fait des millions de vues sur TikTok/YouTube].</p>
                             <p style='font-weight: bold; color: #10b981 !important; margin-bottom:0;'>Prix : {template_prix}</p>
                         </div>
                         """
@@ -253,25 +252,28 @@ else:
                 nom_formate = nom.lower().replace(' ', '-')
                 lien_public = f"/?shop={nom_formate}"
                 
-                # NETTOYAGE PAR REGEX POUR L'ADMINISTRATION ÉGALEMENT
-                contenu_propre = contenu.replace("```html", "").replace("```", "").strip()
-                match_admin = re.search(r"(<h3.*>.*<\/div>|<h3.*>.*)", contenu_propre, re.DOTALL)
-                if match_admin:
-                    contenu_propre = match_admin.group(1)
+                # Nettoyage natif pour éliminer tout code brut résiduel
+                contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
                 
-                # Le container administrateur force maintenant un fond sombre et du texte clair pour contrer le blanc sur blanc
-                st.markdown(f"""
+                # Injection de style CSS isolée uniquement pour l'administration
+                st.markdown("""
                 <style>
-                .admin-preview, .admin-preview p, .admin-preview h3, .admin-preview span {{ color: #ffffff !important; }}
-                .admin-preview .prod-box {{ background-color: #1e1e28 !important; border: 1px solid #3e3e4f; }}
-                .admin-preview .prod-box * {{ color: #ffffff !important; }}
+                .admin-preview { background-color: #14141b !important; padding: 25px; border-radius: 8px; }
+                .admin-preview h3, .admin-preview p, .admin-preview span { color: #ffffff !important; }
+                .admin-preview .prod-box { background-color: #242432 !important; border: 1px solid #3e3e4f; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
+                .admin-preview .prod-box h4 { color: #66fcf1 !important; }
+                .admin-preview .prod-box p { color: #ffffff !important; }
                 </style>
-                <div class="admin-preview" style='border: 2px dashed {couleur_theme}; padding: 20px; border-radius: 8px; background-color: #14141b; color: #ffffff !important;'>
+                """, unsafe_allow_html=True)
+                
+                # Rendu de l'encadré d'administration (Sans balises brutes visibles)
+                st.markdown(f"""
+                <div class="admin-preview" style='border: 2px dashed {couleur_theme};'>
                     <h3>🏬 {nom.upper()}</h3>
                     <p><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}\$</p>
-                    <hr style='border: 1px solid #cbd5e1;'>
+                    <hr style='border: 1px solid #cbd5e1; margin-bottom: 20px;'>
                     <div>{contenu_propre}</div>
                 </div>
                 """, unsafe_allow_html=True)
