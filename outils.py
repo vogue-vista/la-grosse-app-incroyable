@@ -8,12 +8,10 @@ GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
 def initialiser_base_de_donnees():
-    # SÉCURITÉ ABSOLUE : On change le nom du fichier pour 'empire_v2.db' 
-    # pour forcer Streamlit Cloud à recréer une base propre avec la colonne 'prix'
     conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     
-    # Création de la table boutiques avec TOUTES les colonnes nécessaires dès le départ
+    # Table des boutiques
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,13 +23,15 @@ def initialiser_base_de_donnees():
         )
     """)
     
-    # Création des tables de statistiques et notifications
+    # Table des statistiques
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS statistiques (
             cle TEXT PRIMARY KEY,
             valeur REAL
         )
     """)
+    
+    # Table des notifications
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,13 +40,11 @@ def initialiser_base_de_donnees():
         )
     """)
     
-    # Initialisation du chiffre d'affaires à 0.0
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
 
 def appeler_groq(prompt, temperature=0.7):
-   def appeler_groq(prompt, temperature=0.7):
     try:
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
@@ -63,7 +61,8 @@ def executer_scraping_real(cible_url):
         url_api = f"http://scrape.do{SCRAPE_DO_KEY}&url={cible_url}"
         response = requests.get(url_api)
         if response.status_code == 200:
-
+            html_brut = response.text[:500] 
+            return f"✅ Données extraites avec succès via Scrape.do !\n\nExtrait du code source de la page ciblée :\n{html_brut}..."
         else:
             return f"❌ Échec du scraping via Scrape.do. Code erreur : {response.status_code}"
     except Exception as e:
@@ -103,7 +102,7 @@ def recuperer_ca_total():
     cursor.execute("SELECT valeur FROM statistiques WHERE cle = 'ca_total'")
     res = cursor.fetchone()
     conn.close()
-    return res if res else 0.0
+    return res[0] if res else 0.0
 
 def enregistrer_vente(nom_boutique, montant):
     conn = sqlite3.connect("empire_v2.db")
@@ -125,4 +124,4 @@ def recuperer_notifications():
             "📡 Connexion établie avec le réseau de proxies rotatifs de Scrape.do.",
             "🤖 IA Groq synchronisée et prête à propulser vos ventes."
         ]
-    return [r for r in res]
+    return [r[0] for r in res]
