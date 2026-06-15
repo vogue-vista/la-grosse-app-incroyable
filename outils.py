@@ -8,29 +8,24 @@ GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
 def initialiser_base_de_donnees():
-    conn = sqlite3.connect("empire.db")
+    # SÉCURITÉ ABSOLUE : On change le nom du fichier pour 'empire_v2.db' 
+    # pour forcer Streamlit Cloud à recréer une base propre avec la colonne 'prix'
+    conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     
-    # 1. Création de la table de base si elle n'existe pas
+    # Création de la table boutiques avec TOUTES les colonnes nécessaires dès le départ
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nom TEXT UNIQUE,
             niche TEXT,
             contenu TEXT,
-            couleur TEXT
+            couleur TEXT,
+            prix REAL DEFAULT 0.0
         )
     """)
     
-    # SÉCURITÉ ANTI-CRASH : On vérifie si la colonne 'prix' existe déjà
-    cursor.execute("PRAGMA table_info(boutiques)")
-    colonnes = [col[1] for col in cursor.fetchall()]
-    
-    # Si 'prix' n'est pas là, on l'ajoute proprement en direct
-    if "prix" not in colonnes:
-        cursor.execute("ALTER TABLE boutiques ADD COLUMN prix REAL DEFAULT 0.0")
-        
-    # 2. Création des autres tables requises pour les ventes et logs
+    # Création des tables de statistiques et notifications
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS statistiques (
             cle TEXT PRIMARY KEY,
@@ -45,7 +40,7 @@ def initialiser_base_de_donnees():
         )
     """)
     
-    # Initialisation du chiffre d'affaires à 0 si absent
+    # Initialisation du chiffre d'affaires à 0.0
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
@@ -75,7 +70,7 @@ def executer_scraping_real(cible_url):
         return f"Erreur technique de connexion à Scrape.do : {e}"
 
 def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
-    conn = sqlite3.connect("empire.db")
+    conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO boutiques (nom, niche, contenu, couleur, prix) VALUES (?, ?, ?, ?, ?)", (nom, niche, contenu, couleur, prix))
@@ -88,7 +83,7 @@ def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
         conn.close()
 
 def recuperer_boutiques():
-    conn = sqlite3.connect("empire.db")
+    conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     cursor.execute("SELECT nom, niche, contenu, couleur, prix FROM boutiques")
     liste = cursor.fetchall()
@@ -96,22 +91,22 @@ def recuperer_boutiques():
     return list(liste)
 
 def mettre_a_jour_boutique(nom, nouveau_contenu):
-    conn = sqlite3.connect("empire.db")
+    conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     cursor.execute("UPDATE boutiques SET contenu = ? WHERE nom = ?", (nouveau_contenu, nom))
     conn.commit()
     conn.close()
 
 def recuperer_ca_total():
-    conn = sqlite3.connect("empire.db")
+    conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     cursor.execute("SELECT valeur FROM statistiques WHERE cle = 'ca_total'")
     res = cursor.fetchone()
     conn.close()
-    return res[0] if res else 0.0
+    return res if res else 0.0
 
 def enregistrer_vente(nom_boutique, montant):
-    conn = sqlite3.connect("empire.db")
+    conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (montant,))
     cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Vente ! Un client vient de dépenser {montant}$ sur la boutique '{nom_boutique}' !",))
@@ -119,7 +114,7 @@ def enregistrer_vente(nom_boutique, montant):
     conn.close()
 
 def recuperer_notifications():
-    conn = sqlite3.connect("empire.db")
+    conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     cursor.execute("SELECT texte FROM notifications ORDER BY id DESC LIMIT 3")
     res = cursor.fetchall()
@@ -130,4 +125,4 @@ def recuperer_notifications():
             "📡 Connexion établie avec le réseau de proxies rotatifs de Scrape.do.",
             "🤖 IA Groq synchronisée et prête à propulser vos ventes."
         ]
-    return [r[0] for r in res]
+    return [r for r in res]
