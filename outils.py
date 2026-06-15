@@ -46,6 +46,7 @@ def initialiser_base_de_donnees():
     conn.close()
 
 def appeler_groq(prompt, temperature=0.7):
+   def appeler_groq(prompt, temperature=0.7):
     try:
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
@@ -62,8 +63,7 @@ def executer_scraping_real(cible_url):
         url_api = f"http://scrape.do{SCRAPE_DO_KEY}&url={cible_url}"
         response = requests.get(url_api)
         if response.status_code == 200:
-            html_brut = response.text[:500] 
-            return f"✅ Données extraites avec succès via Scrape.do !\n\nExtrait du code source de la page ciblée :\n{html_brut}..."
+
         else:
             return f"❌ Échec du scraping via Scrape.do. Code erreur : {response.status_code}"
     except Exception as e:
