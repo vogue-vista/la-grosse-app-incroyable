@@ -133,7 +133,7 @@ def valider_code_interac():
         st.sidebar.error("❌ Ce code a déjà été activé par un autre utilisateur !")
         return
 
-    if code == "INTERAC500":
+    if code == "INTERAC501":
         outils.consommer_code(code) # Bloque le code définitivement
         st.session_state.compte_actif = True
         st.session_state.forfait = "Starter"
