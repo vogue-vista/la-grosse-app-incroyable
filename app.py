@@ -18,38 +18,34 @@ if "shop" in query_params:
         nom, niche, contenu, couleur, prix = boutique_trouvee
         couleur_theme = "#ff4b4b"
         
-        # Nettoyage rigoureux du contenu pour le client public
+        # Nettoyage de sécurité pour l'affichage public
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
-        
-        # SÉCURITÉ : On s'assure que les boîtes générées par l'IA s'affichent sur fond blanc/gris clair pour le client public
-        contenu_client = contenu_client.replace("background-color: #242432;", "background-color: #f8fafc; border: 1px solid #e2e8f0;")
-        contenu_client = contenu_client.replace("color: #ffffff !important;", "color: #1c1d1f !important;")
-        contenu_client = contenu_client.replace("color: #e2e8f0 !important;", "color: #334155 !important;")
-        contenu_client = contenu_client.replace("color: #66fcf1 !important;", "color: #0f172a !important;")
 
-        # Interface du client public (Propre, lumineuse et professionnelle)
+        # Design lumineux et épuré pour vos clients
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
         h1, h2, h3, h4, h5, p, span, label, div {{ color: #1c1d1f !important; }}
-        .shop-container, .shop-container * {{ color: #1c1d1f !important; }}
         </style>
-        <div class="shop-container" style='border: 3px solid {couleur_theme}; padding: 30px; border-radius: 12px; margin-top: 20px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);'>
-            <h1 style='text-align: center; color: {couleur_theme} !important; font-family: sans-serif;'>🏬 {nom.upper()}</h1>
-            <p style='text-align: center; font-style: italic; color: #555555 !important;'>Spécialiste : {niche}</p>
-            <hr style='border: 1px solid #e2e8f0;'>
-            <div style='font-size: 16px; margin: 20px 0; color: #1c1d1f !important;'>{contenu_client}</div>
-        </div>
         """, unsafe_allow_html=True)
+        
+        st.title(f"🏬 {nom.upper()}")
+        st.subheader(f"✨ Spécialiste : {niche}")
+        st.markdown("---")
+        
+        # Affichage natif du contenu (Markdown ou HTML) pour éviter le texte brut
+        st.markdown(contenu_client, unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown(f"### 💰 Prix unique de la boutique : **{prix} $**")
         
         email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
         nom_formate = nom.lower().replace(" ", "-")
         url_redirection = f"https://streamlit.app{nom_formate}"
 
-        # Injection sécurisée du formulaire d'achat sans aucun texte brut possible
+        # Formulaire d'achat sécurisé
         st.markdown(f"""
         <div style='background-color: #f1f5f9; padding: 25px; border-radius: 12px; border: 1px solid #cbd5e1; margin-top: 25px;'>
-            <h3 style='color: #0f172a !important; margin-bottom: 20px; font-family: sans-serif;'>🛒 Finaliser votre commande en 1-Clic</h3>
+            <h3 style='color: #0f172a !important; margin-bottom: 20px;'>🛒 Finaliser votre commande en 1-Clic</h3>
             <form action="https://formsubmit.co{email_vendeur_cible}" method="POST">
                 <input type="hidden" name="_subject" value="🚨 NOUVELLE COMMANDE - Boutique {nom}">
                 <input type="hidden" name="_next" value="{url_redirection}">
@@ -72,7 +68,7 @@ if "shop" in query_params:
                     <input type="text" name="Adresse_Livraison" required style='width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff !important;'>
                 </div>
                 
-                <button type="submit" style='width: 100%; background-color: #ff4b4b; color: white !important; border: none; padding: 16px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s;'>
+                <button type="submit" style='width: 100%; background-color: #ff4b4b; color: white !important; border: none; padding: 16px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;'>
                     🔥 Confirmer mon achat ({prix} $)
                 </button>
             </form>
@@ -215,24 +211,25 @@ else:
                     with st.spinner("L'IA conçoit votre catalogue de produits..."):
                         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
                             consigne_produits = f"Trouve et liste exactement 10 produits très gagnants et viraux sur TikTok/YouTube Shorts dans la niche '{niche_shop}'. Pour chaque produit, donne un prix de vente e-commerce cohérent (ex: 34.99, 19.99)."
-                            template_prix = "[Prix trouvé par l'IA] \$"
+                            template_prix = "[Prix trouvé par l'IA]"
                         else:
                             consigne_produits = f"Génère des produits basés sur la description utilisateur : '{description_souhaitee}'."
                             template_prix = f"{prix_boutique} \$"
 
+                        # NOUVEAU PROMPT : On demande du Markdown clair et structuré (Zéro bug d'affichage)
                         prompt = f"""
-                        Rédige le contenu d'une page de vente e-commerce pour la boutique '{nom_shop}', spécialisée dans : {niche_shop}.
-                        Consigne de génération : {consigne_produits}
+                        Rédige le catalogue de la boutique e-commerce '{nom_shop}', spécialisée dans : {niche_shop}.
+                        Consigne : {consigne_produits}
                         
-                        Génère UNIQUEMENT les fiches produits au format HTML pur. SANS utiliser de balises ```html ou de blocs de code ou de commentaires. SANS écrire de balise div globale de preview. Commencez directement par les fiches.
+                        Génère ton texte uniquement en Markdown standard sans balise html de bloc de code.
+                        Pour chaque produit, utilise la structure exacte suivante :
                         
-                        Répète le bloc ci-dessous pour CHACUN des produits générés :
-                        <div class='prod-box' style='margin-bottom: 25px; padding: 20px; border-left: 4px solid #ff4b4b; background-color: #242432; border-radius: 6px;'>
-                            <h4 style='color: #66fcf1 !important; margin-top:0;'>📦 [Nom du Produit]</h4>
-                            <p style='color: #ffffff !important;'><b>Description :</b> [Description attractive du produit].</p>
-                            <p style='color: #ffb703 !important; font-style: italic;'><b>🔥 Pourquoi ce produit est viral :</b> [Explique ici pourquoi ce produit fait des millions de vues sur TikTok/YouTube].</p>
-                            <p style='font-weight: bold; color: #10b981 !important; margin-bottom:0;'>Prix : {template_prix}</p>
-                        </div>
+                        ### 📦 [Nom du Produit]
+                        * **Description** : [Rédige une description attractive du produit]
+                        * **🔥 Pourquoi ce produit est viral** : [Explique précisément pourquoi ce produit fait fureur sur TikTok/YouTube]
+                        * **Prix** : {template_prix}
+                        
+                        ---
                         """
                         resultat = outils.appeler_groq(prompt)
                         prix_final_bdd = prix_boutique if prix_boutique > 0 else 39.99
@@ -252,31 +249,18 @@ else:
                 nom_formate = nom.lower().replace(' ', '-')
                 lien_public = f"/?shop={nom_formate}"
                 
-                # Nettoyage natif pour éliminer tout code brut résiduel
                 contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
                 
-                # Injection de style CSS isolée uniquement pour l'administration
-                st.markdown("""
-                <style>
-                .admin-preview { background-color: #14141b !important; padding: 25px; border-radius: 8px; }
-                .admin-preview h3, .admin-preview p, .admin-preview span { color: #ffffff !important; }
-                .admin-preview .prod-box { background-color: #242432 !important; border: 1px solid #3e3e4f; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
-                .admin-preview .prod-box h4 { color: #66fcf1 !important; }
-                .admin-preview .prod-box p { color: #ffffff !important; }
-                </style>
-                """, unsafe_allow_html=True)
+                # Interface d'administration privée (Thème sombre natif de Streamlit respecté)
+                st.markdown(f"### 🏬 {nom.upper()}")
+                st.caption(f"Thématique : {niche} | 🟢 Hébergement Actif")
                 
-                # Rendu de l'encadré d'administration (Sans balises brutes visibles)
-                st.markdown(f"""
-                <div class="admin-preview" style='border: 2px dashed {couleur_theme};'>
-                    <h3>🏬 {nom.upper()}</h3>
-                    <p><b>Thématique :</b> {niche} | 🟢 Hébergement Actif | <b>Prix configuré :</b> {prix}\$</p>
-                    <hr style='border: 1px solid #cbd5e1; margin-bottom: 20px;'>
-                    <div>{contenu_propre}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                # Affichage natif du catalogue sans boîte brisée
+                st.markdown(contenu_propre)
+                st.markdown(f"**Prix configuré :** {prix} \$")
+                st.markdown("---")
                 
                 if st.button("🛒 Simuler un achat client"):
                     outils.enregistrer_vente(nom, prix)
