@@ -1,6 +1,5 @@
 import streamlit as st
 import outils
-import re
 
 outils.initialiser_base_de_donnees()
 
@@ -19,10 +18,8 @@ if "shop" in query_params:
         nom, niche, contenu, couleur, prix = boutique_trouvee
         couleur_theme = "#ff4b4b"
         
-        # Nettoyage de sécurité pour l'affichage public
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # Styles globaux de la page publique (fond clair et aéré pour le client)
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
@@ -34,19 +31,25 @@ if "shop" in query_params:
         st.subheader(f"✨ Spécialiste : {niche}")
         st.markdown("---")
         
-        # Affichage du catalogue généré par l'IA
         st.markdown(contenu_client, unsafe_allow_html=True)
         st.markdown("---")
         st.markdown(f"### 💰 Prix unique de la boutique : **{prix} $**")
         
-        # Préparation des variables de redirection et de réception de courriels
         email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
         nom_formate = nom.lower().replace(" ", "-")
         url_redirection = f"https://streamlit.app{nom_formate}"
 
         st.markdown("### 🛒 Finaliser votre commande en 1-Clic")
 
-        # Formulaire HTML sécurisé exécuté via un composant isolé
+        # Extraction des noms de produits du catalogue pour remplir automatiquement le menu déroulant
+        options_html = "<option value='Tous les produits'>🎁 Tout le catalogue d'un coup</option>"
+        lignes = contenu_client.split("\n")
+        for ligne in lignes:
+            if ligne.startswith("### 📦"):
+                nom_prod = ligne.replace("### 📦", "").strip()
+                options_html += f"<option value='{nom_prod}'>📦 {nom_prod}</option>"
+
+        # FIX TOTAL : Utilisation de JavaScript Fetch pour envoyer le courriel de commande sans blocage
         formulaire_html = f"""
         <!DOCTYPE html>
         <html>
@@ -77,7 +80,7 @@ if "shop" in query_params:
                     color: #334155;
                     font-size: 14px;
                 }}
-                input {{
+                input, select {{
                     width: 100%;
                     padding: 12px;
                     border-radius: 6px;
@@ -87,7 +90,7 @@ if "shop" in query_params:
                     box-sizing: border-box;
                     font-size: 16px;
                 }}
-                input:focus {{
+                input:focus, select:focus {{
                     border-color: #ff4b4b;
                     outline: none;
                 }}
@@ -102,21 +105,29 @@ if "shop" in query_params:
                     border-radius: 8px;
                     cursor: pointer;
                     margin-top: 10px;
-                    transition: background-color 0.2s;
                 }}
-                button:hover {{
-                    background-color: #e03a3a;
+                button:hover {{ background-color: #e03a3a; }}
+                .success-msg {{
+                    display: none;
+                    background-color: #d1fae5;
+                    color: #065f46;
+                    padding: 15px;
+                    border-radius: 6px;
+                    text-align: center;
+                    font-weight: bold;
+                    margin-top: 15px;
                 }}
             </style>
         </head>
         <body>
             <div class="form-box">
-                <form action="https://formsubmit.co{email_vendeur_cible}" method="POST" target="_parent">
-                    <input type="hidden" name="_subject" value="🚨 NOUVELLE COMMANDE - Boutique {nom}">
-                    <input type="hidden" name="_next" value="{url_redirection}">
-                    <input type="hidden" name="_captcha" value="false">
-                    <input type="hidden" name="Boutique_Provenance" value="{nom}">
-                    <input type="hidden" name="Prix_Total" value="{prix} $">
+                <form id="orderForm">
+                    <div class="input-group">
+                        <label>🛍️ Sélectionnez l'article à acheter :</label>
+                        <select name="Produit_Achete" id="produitSelect">
+                            {options_html}
+                        </select>
+                    </div>
                     
                     <div class="input-group">
                         <label>Votre Nom complet :</label>
@@ -133,16 +144,54 @@ if "shop" in query_params:
                         <input type="text" name="Adresse_Livraison" required placeholder="Ex: 123 rue des Boutiques, Montréal, QC">
                     </div>
                     
-                    <button type="submit">
-                        🔥 Confirmer mon achat ({prix} $)
-                    </button>
+                    <button type="submit" id="submitBtn">🔥 Confirmer mon achat ({prix} $)</button>
                 </form>
+                <div id="successBlock" class="success-msg">🎉 Merci ! Votre commande a été transmise avec succès au vendeur.</div>
             </div>
+
+            <script>
+                document.getElementById('orderForm').addEventListener('submit', function(e) {{
+                    e.preventDefault();
+                    const btn = document.getElementById('submitBtn');
+                    btn.innerText = "⏳ Envoi en cours...";
+                    btn.disabled = true;
+
+                    const formData = new FormData();
+                    formData.append('Boutique_Provenance', "{nom}");
+                    formData.append('Prix_Total', "{prix} $");
+                    formData.append('Produit_Selectionne', document.getElementById('produitSelect').value);
+                    formData.append('Nom_Client', e.target.Nom_Client.value);
+                    formData.append('Email_Client', e.target.Email_Client.value);
+                    formData.append('Adresse_Livraison', e.target.Adresse_Livraison.value);
+                    formData.append('_subject', "🚨 NOUVELLE COMMANDE - Boutique {nom}");
+                    formData.append('_captcha', "false");
+
+                    fetch('https://formsubmit.co{email_vendeur_cible}', {{
+                        method: 'POST',
+                        body: formData
+                    }})
+                    .then(response => {{
+                        if(response.ok) {{
+                            document.getElementById('orderForm').style.display = 'none';
+                            document.getElementById('successBlock').style.display = 'block';
+                        }} else {{
+                            alert("Erreur lors de la validation. Veuillez réessayer.");
+                            btn.innerText = "🔥 Confirmer mon achat ({prix} $)";
+                            btn.disabled = false;
+                        }}
+                    }})
+                    .catch(error => {{
+                        alert("Erreur de connexion.");
+                        btn.innerText = "🔥 Confirmer mon achat ({prix} $)";
+                        btn.disabled = false;
+                    }});
+                }});
+            </script>
         </body>
         </html>
         """
         
-        st.components.v1.html(formulaire_html, height=450, scrolling=False)
+        st.components.v1.html(formulaire_html, height=530, scrolling=False)
         st.stop()
     else:
         st.error("Boutique introuvable ou abonnement expiré.")
@@ -310,7 +359,6 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
-            # CORRECTION DU SÉLECTEUR : On force l'extraction textuelle du nom (premier élément du tuple x)
             choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
                 nom, niche, contenu, couleur, prix = choix
@@ -367,7 +415,6 @@ else:
         st.header("🌍 Le Conquérant Mondial")
         if not liste_shops: st.info("Aucune boutique disponible.")
         else:
-            # CORRECTION ÉGALEMENT ICI : Pour éviter le même crash de sélecteur
             shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
