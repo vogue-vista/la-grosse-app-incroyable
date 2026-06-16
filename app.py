@@ -1,6 +1,7 @@
 import streamlit as st
 import outils
 import re
+from datetime import datetime
 
 outils.initialiser_base_de_donnees()
 
@@ -12,7 +13,7 @@ if "shop" in query_params:
     liste_shops_publics = outils.recuperer_boutiques()
     boutique_trouvee = None
     for s in list(liste_shops_publics):
-        if s[0].lower().replace(" ", "-") == shop_public.lower():
+        if s.lower().replace(" ", "-") == shop_public.lower():
             boutique_trouvee = s
             break
     if boutique_trouvee:
@@ -43,7 +44,7 @@ if "shop" in query_params:
         for bloc in blocs_produits:
             if bloc.strip():
                 lignes_bloc = bloc.split("\n")
-                nom_produit = lignes_bloc[0].strip()
+                nom_produit = lignes_bloc.strip()
                 
                 trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
                 if trouver_prix:
@@ -125,36 +126,54 @@ st.sidebar.markdown("---")
 
 def valider_code_interac():
     code = st.session_state.cle_interac.strip()
-    if code == "":
-        return
-        
-    # CORRECTION CRITIQUE : On vérifie en BDD si le code a déjà été consommé
-    if outils.code_deja_utilise(code):
-        st.sidebar.error("❌ Ce code a déjà été activé par un autre utilisateur !")
-        return
-
-    if code == "INTERAC500":
-        outils.consommer_code(code) # Bloque le code définitivement
-        st.session_state.compte_actif = True
-        st.session_state.forfait = "Starter"
-        st.session_state.credits_restants = 10
-        st.sidebar.success("✅ Forfait Starter Activé !")
-    elif code == "INTERAC1000":
-        outils.consommer_code(code) # Bloque le code définitivement
+    
+    # 1. VOTRE CODE ADMIN PRIVÉ (Fonctionne à l'infini pour vous !)
+    if code == "ADMIN-MAX-99":
         st.session_state.compte_actif = True
         st.session_state.forfait = "Élite"
-        st.session_state.credits_restants = 20
-        st.sidebar.success("👑 Forfait Élite Activé !")
+        st.session_state.credits_restants = 9999
+        st.sidebar.success("👑 BIENVENUE CRÉATEUR ! Énergie Illimitée.")
+        st.balloons()
+        return
+
+    # 2. LOGIQUE DU CODE MENSUEL AUTOMATIQUE CLIENTS
+    liste_mois = ["JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"]
+    mois_actuel = liste_mois[datetime.now().month - 1]
+    
+    code_starter_ce_mois = f"INTERAC-{mois_actuel}"     # Ex en Juin 2026: INTERAC-JUIN
+    code_elite_ce_mois = f"EMPIRE-{mois_actuel}"        # Ex en Juin 2026: EMPIRE-JUIN
+    
+    if code == code_starter_ce_mois:
+        if outils.code_deja_utilise(code):
+            st.sidebar.error("❌ Ce code mensuel global a déjà été validé sur cette infrastructure.")
+        else:
+            st.session_state.compte_actif = True
+            st.session_state.forfait = "Starter"
+            st.session_state.credits_restants = 10
+            outils.marquer_code_utilise(code)
+            st.sidebar.success(f"✅ Forfait Starter Mensuel ({mois_actuel}) Activé !")
+            st.balloons()
+            
+    elif code == code_elite_ce_mois:
+        if outils.code_deja_utilise(code):
+            st.sidebar.error("❌ Ce code mensuel global a déjà été validé sur cette infrastructure.")
+        else:
+            st.session_state.compte_actif = True
+            st.session_state.forfait = "Élite"
+            st.session_state.credits_restants = 20
+            outils.marquer_code_utilise(code)
+            st.sidebar.success(f"👑 Forfait Élite Mensuel ({mois_actuel}) Activé !")
+            st.balloons()
+            
     elif code == "EXTRA50":
         if st.session_state.compte_actif:
-            outils.consommer_code(code) # Bloque le code définitivement
             st.session_state.credits_restants += 1
             st.sidebar.success("⚡ Recharge validée ! +1 Action.")
             st.balloons()
         else:
             st.sidebar.error("❌ Activez d'abord un forfait principal.")
-    else:
-        st.sidebar.error("❌ Code inconnu ou invalide.")
+    elif code != "":
+        st.sidebar.error("❌ Code invalide.")
 
 st.sidebar.text_input("Clé d'activation Interac", type="password", key="cle_interac", on_change=valider_code_interac)
 
@@ -185,9 +204,9 @@ st.markdown("### ⚡ Activité de la communauté en direct")
 notifs = outils.recuperer_notifications()
 st.markdown(f"""
 <div style='background-color: #1e1e24; padding: 12px; border-radius: 8px; border-left: 5px solid #66fcf1; margin-bottom: 20px;'>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[0] if len(notifs) > 0 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[1] if len(notifs) > 1 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[2] if len(notifs) > 2 else ''}</span>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 0 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 1 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 2 else ''}</span>
 </div>
 """, unsafe_allow_html=True)
 
