@@ -78,7 +78,7 @@ def appeler_groq(prompt, temperature=0.7):
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature
         )
-        return completion.choices.message.content
+        return completion.choices[0].message.content
     except Exception as e:
         st.error(f"⚠️ Groq est surchargé. Attendez 15 secondes et réessayez. (Détail : {e})")
         st.stop()
