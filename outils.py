@@ -39,10 +39,40 @@ def initialiser_base_de_donnees():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # NOUVEAU : Table pour verrouiller les codes à usage unique
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS codes_utilises (
+            code TEXT PRIMARY KEY,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
+
+# NOUVEAU : Vérifie si un code a déjà été consommé
+def verifier_cle_disponible(code):
+    conn = sqlite3.connect("empire_v2.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM codes_utilises WHERE code = ?", (code,))
+    existe = cursor.fetchone()
+    conn.close()
+    return existe is None
+
+# NOUVEAU : Bloque le code définitivement dans la base de données
+def marquer_cle_utilisee(code):
+    conn = sqlite3.connect("empire_v2.db")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO codes_utilises (code) VALUES (?)", (code,))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
 
 def appeler_groq(prompt, temperature=0.7):
     try:
