@@ -95,7 +95,7 @@ if "shop" in query_params:
                     outils.enregistrer_vente(nom, prix_final_calculer)
                     st.balloons()
                     
-                    # CORRECTION DU PAR-FEU : Soumission directe côté navigateur internet (Frontend)
+                    # PASSERELLE FRONTEND ANTI PARE-FEU SCOLAIRE
                     nom_formate = nom.lower().replace(" ", "-")
                     url_retour = f"https://streamlit.app{nom_formate}"
                     
@@ -284,6 +284,7 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
+            # FIX DE L'ERREUR DE TYPE SELECTION : format_func prend maintenant x[0] pour afficher uniquement le nom de la boutique
             choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
                 nom, niche, contenu, couleur, prix = choix
@@ -302,11 +303,21 @@ else:
                 st.markdown(f"**Prix de base configuré :** {prix} \$")
                 st.markdown("---")
                 
-                if st.button("🛒 Simuler un achat client"):
-                    outils.enregistrer_vente(nom, prix)
-                    st.balloons()
-                    st.success(f"Panier de {prix}\$ encaissé avec succès !")
-                    st.rerun()
+                col_action1, col_action2 = st.columns(2)
+                with col_action1:
+                    if st.button("🛒 Simuler un achat client"):
+                        outils.enregistrer_vente(nom, prix)
+                        st.balloons()
+                        st.success(f"Panier de {prix}\$ encaissé avec succès !")
+                        st.rerun()
+                with col_action2:
+                    # BOUTON DE SUPPRESSION DÉFINITIVE PROGRAMMÉ EN PRIMAIRE ROUGE
+                    if st.button("🗑️ Supprimer définitivement cette boutique", type="primary"):
+                        if outils.supprimer_boutique(nom):
+                            st.success(f"💥 La boutique '{nom}' a été effacée de l'infrastructure !")
+                            st.rerun()
+                        else:
+                            st.error("Erreur lors de la suppression.")
 
     with tab4:
         st.header("🕵️‍♂️ Radar Espion")
