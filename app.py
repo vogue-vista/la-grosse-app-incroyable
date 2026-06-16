@@ -431,4 +431,4 @@ else:
             prix_mensuel = st.number_input("Tarif de l'abonnement mensuel ($) :", min_value=4.99, value=49.99, step=5.0)
             
             if st.button("🚀 Bâtir et Déployer la Plateforme d'Abonnement") and sujet_rente and nom_plateforme and email_encaissement:
-                with st.spinner("🧠 L'IA conçoit l'architecture de l'offre récurrente et les tunnels de conversion..."
+                with st.spinner("🧠 L'IA conçoit l'architecture de l'offre récurrente et les tunnels de conversion...")
