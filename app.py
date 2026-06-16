@@ -123,38 +123,38 @@ if "rente_debloquee" not in st.session_state: st.session_state.rente_debloquee =
 st.sidebar.title("🎮 Centre de Contrôle")
 st.sidebar.markdown("---")
 
-# CORRECTION SÉCURITÉ : Les codes se bloquent après la première validation
 def valider_code_interac():
     code = st.session_state.cle_interac.strip()
     if code == "":
         return
         
-    if code in ["INTERAC500", "INTERAC1000", "EXTRA50"]:
-        if outils.verifier_cle_disponible(code):
-            if code == "INTERAC500":
-                st.session_state.compte_actif = True
-                st.session_state.forfait = "Starter"
-                st.session_state.credits_restants += 10
-                outils.marquer_cle_utilisee(code)
-                st.sidebar.success("✅ Forfait Starter Activé !")
-            elif code == "INTERAC1000":
-                st.session_state.compte_actif = True
-                st.session_state.forfait = "Élite"
-                st.session_state.credits_restants += 20
-                outils.marquer_cle_utilisee(code)
-                st.sidebar.success("👑 Forfait Élite Activé !")
-            elif code == "EXTRA50":
-                if st.session_state.compte_actif:
-                    st.session_state.credits_restants += 1
-                    outils.marquer_cle_utilisee(code)
-                    st.sidebar.success("⚡ Recharge validée ! +1 Action.")
-                    st.balloons()
-                else:
-                    st.sidebar.error("❌ Activez d'abord un forfait principal.")
+    # CORRECTION CRITIQUE : On vérifie en BDD si le code a déjà été consommé
+    if outils.code_deja_utilise(code):
+        st.sidebar.error("❌ Ce code a déjà été activé par un autre utilisateur !")
+        return
+
+    if code == "INTERAC500":
+        outils.consommer_code(code) # Bloque le code définitivement
+        st.session_state.compte_actif = True
+        st.session_state.forfait = "Starter"
+        st.session_state.credits_restants = 10
+        st.sidebar.success("✅ Forfait Starter Activé !")
+    elif code == "INTERAC1000":
+        outils.consommer_code(code) # Bloque le code définitivement
+        st.session_state.compte_actif = True
+        st.session_state.forfait = "Élite"
+        st.session_state.credits_restants = 20
+        st.sidebar.success("👑 Forfait Élite Activé !")
+    elif code == "EXTRA50":
+        if st.session_state.compte_actif:
+            outils.consommer_code(code) # Bloque le code définitivement
+            st.session_state.credits_restants += 1
+            st.sidebar.success("⚡ Recharge validée ! +1 Action.")
+            st.balloons()
         else:
-            st.sidebar.error("❌ Ce code d'activation a déjà été utilisé !")
+            st.sidebar.error("❌ Activez d'abord un forfait principal.")
     else:
-        st.sidebar.error("❌ Code invalide.")
+        st.sidebar.error("❌ Code inconnu ou invalide.")
 
 st.sidebar.text_input("Clé d'activation Interac", type="password", key="cle_interac", on_change=valider_code_interac)
 
