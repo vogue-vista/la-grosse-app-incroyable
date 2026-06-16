@@ -432,3 +432,31 @@ else:
             
             if st.button("🚀 Bâtir et Déployer la Plateforme d'Abonnement") and sujet_rente and nom_plateforme and email_encaissement:
                 with st.spinner("🧠 L'IA conçoit l'architecture de l'offre récurrente et les tunnels de conversion..."):
+                                    # L'IA Groq rédige la landing page optimisée pour l'abonnement
+                    prompt_rente = f"""
+                    Tu es un ingénieur en conversion e-commerce spécialisé dans l'économie de l'abonnement (Subscription Box / SaaS).
+                    Conçois la landing page complète pour la marque '{nom_plateforme}' dans la niche '{sujet_rente}'.
+                    Le tarif de l'abonnement est de {prix_mensuel}$ par mois.
+                    
+                    Génère ton texte uniquement en Markdown standard sans balise html de bloc de code.
+                    Respecte STRICTEMENT cette structure pour convertir le visiteur :
+                    
+                    ### 📦 Notre Formule d'Abonnement Mensuel
+                    * **L'Offre Irrésistible** : [Décris précisément ce que l'abonné reçoit chaque mois pour justifier les {prix_mensuel}$]
+                    * **🔥 Pourquoi rejoindre le club** : [3 arguments psychologiques massifs pour pousser à l'engagement récurrent]
+                    * **Ce qui est inclus dans votre box ce mois-ci** : [Donne des exemples concrets de produits ou services inclus]
+                    * **Prix** : {prix_mensuel} $ / mois (Sans engagement, annulation en 1-clic)
+                    
+                    ---
+                    """
+                    page_abonnement_complete = outils.appeler_groq(prompt_rente, temperature=0.3)
+                    
+                with st.spinner("🔌 Injection des modules d'abonnements et création des serveurs publics..."):
+                    # Déploiement automatique du site d'abonnement dans la base de données
+                    if outils.ajouter_boutique(nom_plateforme, f"Abonnement Récurrent ({sujet_rente})", page_abonnement_complete, prix_mensuel, couleur=email_encaissement):
+                        st.success(f"🎉 Incroyable ! La plateforme d'abonnement '{nom_plateforme}' a été entièrement codée et déployée à 100% en automatique. Vos clients peuvent s'y abonner dès maintenant !")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("Ce nom de plateforme est déjà réservé dans le système.")
+
