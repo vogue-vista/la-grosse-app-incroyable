@@ -54,7 +54,8 @@ def appeler_groq(prompt, temperature=0.7):
         )
         return completion.choices[0].message.content
     except Exception as e:
-        return f"Erreur avec l'IA Groq : {e}"
+        st.error(f"⚠️ Groq est surchargé. Attendez 15 secondes et réessayez. (Détail : {e})")
+        st.stop()
 
 def executer_scraping_real(cible_url):
     try:
@@ -77,6 +78,19 @@ def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
         conn.commit()
         return True
     except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def supprimer_boutique(nom_boutique):
+    conn = sqlite3.connect("empire_v2.db")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM boutiques WHERE nom = ?", (nom_boutique,))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🗑️ La boutique '{nom_boutique}' a été définitivement supprimée de l'infrastructure.",))
+        conn.commit()
+        return True
+    except Exception as e:
         return False
     finally:
         conn.close()
