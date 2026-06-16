@@ -19,10 +19,8 @@ if "shop" in query_params:
         nom, niche, contenu, couleur, prix_bdd = boutique_trouvee
         couleur_theme = "#ff4b4b"
         
-        # Nettoyage de sécurité pour l'affichage public
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # Design lumineux et épuré pour vos clients
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
@@ -35,22 +33,18 @@ if "shop" in query_params:
         st.subheader(f"✨ Spécialiste : {niche}")
         st.markdown("---")
         
-        # Affichage du catalogue généré par l'IA
         st.markdown(contenu_client, unsafe_allow_html=True)
         st.markdown("---")
         
-        # ALGORITHME : Extraction automatique des produits et de leurs vrais prix depuis le texte de l'IA
         dictionnaire_produits = {}
         total_catalogue_complet = 0.0
         
-        # Découpage du catalogue par bloc de produit
         blocs_produits = contenu_client.split("### 📦")
         for bloc in blocs_produits:
             if bloc.strip():
                 lignes_bloc = bloc.split("\n")
                 nom_produit = lignes_bloc[0].strip()
                 
-                # Recherche d'un prix en dollars dans ce bloc de produit
                 trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
                 if trouver_prix:
                     prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".")
@@ -69,7 +63,6 @@ if "shop" in query_params:
 
         st.markdown("### 🛒 Finaliser votre commande en 1-Clic")
         
-        # Formulaire d'achat purement natif Streamlit
         with st.form("achat_client_form"):
             produit_selectionne = st.selectbox(
                 "🛍️ Sélectionnez l'article à acheter :",
@@ -95,7 +88,6 @@ if "shop" in query_params:
                     outils.enregistrer_vente(nom, prix_final_calculer)
                     st.balloons()
                     
-                    # PASSERELLE FRONTEND ANTI PARE-FEU SCOLAIRE
                     nom_formate = nom.lower().replace(" ", "-")
                     url_retour = f"https://streamlit.app{nom_formate}"
                     
@@ -284,7 +276,6 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
-            # FIX DE L'ERREUR DE TYPE SELECTION : format_func prend maintenant x[0] pour afficher uniquement le nom de la boutique
             choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
                 nom, niche, contenu, couleur, prix = choix
@@ -295,7 +286,6 @@ else:
                 contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
-                
                 st.markdown(f"### 🏬 {nom.upper()}")
                 st.caption(f"Thématique : {niche} | 🟢 Hébergement Actif")
                 
@@ -311,13 +301,12 @@ else:
                         st.success(f"Panier de {prix}\$ encaissé avec succès !")
                         st.rerun()
                 with col_action2:
-                    # BOUTON DE SUPPRESSION DÉFINITIVE PROGRAMMÉ EN PRIMAIRE ROUGE
+                    # FIX DE L'ATTRIBUTERROR : La fonction outils.supprimer_boutique est maintenant lue correctement
                     if st.button("🗑️ Supprimer définitivement cette boutique", type="primary"):
                         if outils.supprimer_boutique(nom):
-                            st.success(f"💥 La boutique '{nom}' a été effacée de l'infrastructure !")
+                            st.success(f"La boutique '{nom}' a été effacée de la base de données !")
                             st.rerun()
-                        else:
-                            st.error("Erreur lors de la suppression.")
+                        else: st.error("Erreur de suppression.")
 
     with tab4:
         st.header("🕵️‍♂️ Radar Espion")
