@@ -428,4 +428,4 @@ else:
                 st.sidebar.success("🔓 Algorithme récurrent débloqué !")
             elif code_rente != "":
                 if outils.code_deja_utilise(code_rente):
-                    st.sidebar.error("
+                    st.sidebar.error(")
