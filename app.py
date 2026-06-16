@@ -421,14 +421,14 @@ else:
 
     with tab8:
         st.header("💎 L'Usine à Rente Mensuelle Récurrente")
-        def valider_code_rente():
+               def valider_code_rente():
             code_rente = st.session_state.code_premium_input.strip()
             if st.session_state.forfait == "Élite" or code_rente == "RENTE350":
                 st.session_state.rente_debloquee = True
                 st.sidebar.success("🔓 Algorithme récurrent débloqué !")
             elif code_rente != "":
                 if outils.code_deja_utilise(code_rente):
-                     st.sidebar.error("❌ Ce code de rente a déjà été activé par un autre utilisateur.")
+                    st.sidebar.error("❌ Ce code de rente a déjà été activé par un autre utilisateur.")
                     st.session_state.rente_debloquee = False
                 elif code_rente == "RENTE350":
                     st.session_state.rente_debloquee = True
