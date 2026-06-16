@@ -123,26 +123,37 @@ if "rente_debloquee" not in st.session_state: st.session_state.rente_debloquee =
 st.sidebar.title("🎮 Centre de Contrôle")
 st.sidebar.markdown("---")
 
+# CORRECTION SÉCURITÉ : Les codes se bloquent après la première validation
 def valider_code_interac():
     code = st.session_state.cle_interac.strip()
-    if code == "INTERAC500":
-        st.session_state.compte_actif = True
-        st.session_state.forfait = "Starter"
-        st.session_state.credits_restants = 10
-        st.sidebar.success("✅ Forfait Starter Activé !")
-    elif code == "INTERAC1000":
-        st.session_state.compte_actif = True
-        st.session_state.forfait = "Élite"
-        st.session_state.credits_restants = 20
-        st.sidebar.success("👑 Forfait Élite Activé !")
-    elif code == "EXTRA50":
-        if st.session_state.compte_actif:
-            st.session_state.credits_restants += 1
-            st.sidebar.success("⚡ Recharge validée ! +1 Action.")
-            st.balloons()
+    if code == "":
+        return
+        
+    if code in ["INTERAC500", "INTERAC1000", "EXTRA50"]:
+        if outils.verifier_cle_disponible(code):
+            if code == "INTERAC500":
+                st.session_state.compte_actif = True
+                st.session_state.forfait = "Starter"
+                st.session_state.credits_restants += 10
+                outils.marquer_cle_utilisee(code)
+                st.sidebar.success("✅ Forfait Starter Activé !")
+            elif code == "INTERAC1000":
+                st.session_state.compte_actif = True
+                st.session_state.forfait = "Élite"
+                st.session_state.credits_restants += 20
+                outils.marquer_cle_utilisee(code)
+                st.sidebar.success("👑 Forfait Élite Activé !")
+            elif code == "EXTRA50":
+                if st.session_state.compte_actif:
+                    st.session_state.credits_restants += 1
+                    outils.marquer_cle_utilisee(code)
+                    st.sidebar.success("⚡ Recharge validée ! +1 Action.")
+                    st.balloons()
+                else:
+                    st.sidebar.error("❌ Activez d'abord un forfait principal.")
         else:
-            st.sidebar.error("❌ Activez d'abord un forfait principal.")
-    elif code != "":
+            st.sidebar.error("❌ Ce code d'activation a déjà été utilisé !")
+    else:
         st.sidebar.error("❌ Code invalide.")
 
 st.sidebar.text_input("Clé d'activation Interac", type="password", key="cle_interac", on_change=valider_code_interac)
@@ -272,104 +283,3 @@ else:
                             st.rerun()
                         else: st.error("Nom déjà pris.")
             else: st.error("Veuillez remplir le Nom et votre Courriel.")
-    with tab3:
-        st.header("🌐 Vos Serveurs d'Hébergement Actifs")
-        if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
-        else:
-            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
-            if choix:
-                nom, niche, contenu, couleur, prix = choix
-                couleur_theme = "#45f3ff"
-                nom_formate = nom.lower().replace(' ', '-')
-                lien_public = f"/?shop={nom_formate}"
-                
-                contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
-                
-                st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
-                st.markdown(f"### 🏬 {nom.upper()}")
-                st.caption(f"Thématique : {niche} | 🟢 Hébergement Actif")
-                
-                st.markdown(contenu_propre)
-                st.markdown(f"**Prix de base configuré :** {prix} \$")
-                st.markdown("---")
-                
-                col_action1, col_action2 = st.columns(2)
-                with col_action1:
-                    if st.button("🛒 Simuler un achat client"):
-                        outils.enregistrer_vente(nom, prix)
-                        st.balloons()
-                        st.success(f"Panier de {prix}\$ encaissé avec succès !")
-                        st.rerun()
-                with col_action2:
-                    # FIX DE L'ATTRIBUTERROR : La fonction outils.supprimer_boutique est maintenant lue correctement
-                    if st.button("🗑️ Supprimer définitivement cette boutique", type="primary"):
-                        if outils.supprimer_boutique(nom):
-                            st.success(f"La boutique '{nom}' a été effacée de la base de données !")
-                            st.rerun()
-                        else: st.error("Erreur de suppression.")
-
-    with tab4:
-        st.header("🕵️‍♂️ Radar Espion")
-        mot_espion = st.text_input("Produit à traquer :")
-        if st.button("🔍 Extraire les stratégies") and mot_espion:
-            with st.spinner("Analyse..."):
-                prompt = f"Fais un rapport d'espionnage e-commerce pour le produit '{mot_espion}'."
-                st.info(outils.appeler_groq(prompt))
-
-    with tab5:
-        st.header("💡 Laboratoire de R&D : Concepteur de Produits")
-        if st.session_state.forfait != "Élite":
-            st.markdown("<div style='background-color: #2c1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4b4b; text-align: center;'><h3>🔒 Réservé aux Membres Élite</h3><p>La R&D par IA est réservée au forfait Élite.</p></div>", unsafe_allow_html=True)
-        else:
-            st.success("🔓 Accès Élite Validé.")
-            idee = st.text_input("Votre idée :")
-            if st.button("🚀 Matérialiser la marque") and idee:
-                prompt = f"Crée une marque complète et un texte marketing pour : '{idee}'."
-                st.info(outils.appeler_groq(prompt))
-
-    with tab6:
-        st.header("🎮 Gaming Break")
-        jeu = st.selectbox("Jeu :", ["Fortnite", "League of Legends", "Valorant"])
-        pseudo = st.text_input("Pseudo de joueur :")
-        if pseudo:
-            url_jeu = "lol" if jeu == "League of Legends" else jeu.lower()
-            url_final = f"https://tracker.gg{url_jeu}/profile/riot/{pseudo}/overview"
-            st.markdown(f"📊 **Statistiques prêtes !** [Consulter le profil Tracker.gg de {pseudo}]({url_final})")
-
-    with tab7:
-        st.header("🌍 Le Conquérant Mondial")
-        if not liste_shops: st.info("Aucune boutique disponible.")
-        else:
-            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
-            langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
-            if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible[0]
-                texte_origine = shop_cible[2]
-                
-                with st.spinner("Traduction par l'IA en cours..."):
-                    prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
-                    nouveau_texte = outils.appeler_groq(prompt, temperature=0.3)
-                    outils.mettre_a_jour_boutique(nom_boutique, nouveau_texte)
-                    
-                st.success("🎉 Traduction / Optimisation injectée ! Rafraîchissez l'onglet 'Mes Boutiques'.")
-                st.rerun()
-
-    with tab8:
-        st.header("💎 L'Usine à Rente Mensuelle Récurrente")
-        
-        def valider_code_rente():
-            if st.session_state.code_premium_input.strip() == "RENTE350":
-                st.session_state.rente_debloquee = True
-            elif st.session_state.code_premium_input.strip() != "":
-                st.session_state.rente_debloquee = False
-
-        if not st.session_state.rente_debloquee:
-            st.text_input("Code Premium Rente", type="password", key="code_premium_input", on_change=valider_code_rente)
-            st.warning("🔒 Saisissez le code reçu après votre virement de 350 $.")
-        else:
-            st.success("🔓 Algorithme récurrent activé.")
-            sujet_rente = st.text_input("Thématique de l'abonnement :")
-            if st.button("🚀 Créer la rente") and sujet_rente:
-                with st.spinner("Génération..."):
-                    prompt = f"Génère un plan de box par abonnement pour la niche '{sujet_rente}'."
-                    st.info(outils.appeler_groq(prompt))
