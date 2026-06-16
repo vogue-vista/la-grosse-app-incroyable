@@ -3,7 +3,6 @@ import streamlit as st
 import requests
 from groq import Groq
 
-# Extraction sécurisée des clés d'API dans Streamlit Cloud
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
@@ -11,7 +10,6 @@ def initialiser_base_de_donnees():
     conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     
-    # Table des boutiques
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +21,6 @@ def initialiser_base_de_donnees():
         )
     """)
     
-    # Table des statistiques
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS statistiques (
             cle TEXT PRIMARY KEY,
@@ -31,7 +28,6 @@ def initialiser_base_de_donnees():
         )
     """)
     
-    # Table des notifications
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,8 +35,8 @@ def initialiser_base_de_donnees():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-
-    # NOUVEAU : Table pour verrouiller les codes à usage unique
+    
+    # NOUVEAU : Table pour enregistrer les codes à usage unique déjà consommés
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS codes_utilises (
             code TEXT PRIMARY KEY,
@@ -52,17 +48,17 @@ def initialiser_base_de_donnees():
     conn.commit()
     conn.close()
 
-# NOUVEAU : Vérifie si un code a déjà été consommé
-def verifier_cle_disponible(code):
+# NOUVEAU : Vérifie si un code a déjà été brûlé
+def code_deja_utilise(code):
     conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM codes_utilises WHERE code = ?", (code,))
-    existe = cursor.fetchone()
+    res = cursor.fetchone()
     conn.close()
-    return existe is None
+    return res is not None
 
-# NOUVEAU : Bloque le code définitivement dans la base de données
-def marquer_cle_utilisee(code):
+# NOUVEAU : Bloque définitivement un code dans la base de données
+def consommer_code(code):
     conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     try:
