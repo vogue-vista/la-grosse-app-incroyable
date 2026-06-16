@@ -428,4 +428,22 @@ else:
                 st.sidebar.success("🔓 Algorithme récurrent débloqué !")
             elif code_rente != "":
                 if outils.code_deja_utilise(code_rente):
-                    st.sidebar.error(")
+                     st.sidebar.error("❌ Ce code de rente a déjà été activé par un autre utilisateur.")
+                    st.session_state.rente_debloquee = False
+                elif code_rente == "RENTE350":
+                    st.session_state.rente_debloquee = True
+                    outils.marquer_code_utilise(code_rente)
+                else:
+                    st.sidebar.error("❌ Code de rente invalide.")
+                    st.session_state.rente_debloquee = False
+
+        if not st.session_state.rente_debloquee:
+            st.text_input("Code Premium Rente", type="password", key="code_premium_input", on_change=valider_code_rente)
+            st.warning("🔒 Saisissez le code reçu après votre virement de 350 $.")
+        else:
+            st.success("🔓 Algorithme récurrent activé.")
+            sujet_rente = st.text_input("Thématique de l'abonnement :")
+            if st.button("🚀 Créer la rente") and sujet_rente:
+                with st.spinner("Génération..."):
+                    prompt = f"Génère un plan de box par abonnement pour la niche '{sujet_rente}'."
+                    st.info(outils.appeler_groq(prompt))
