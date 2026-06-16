@@ -17,6 +17,7 @@ if "shop" in query_params:
             break
     if boutique_trouvee:
         nom, niche, contenu, couleur, prix_bdd = boutique_trouvee
+        couleur_theme = "#ff4b4b"
         
         # Nettoyage de sécurité pour l'affichage public
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
@@ -49,10 +50,9 @@ if "shop" in query_params:
                 lignes_bloc = bloc.split("\n")
                 nom_produit = lignes_bloc[0].strip()
                 
-                # Recherche d'un prix en dollars (ex: 39.99, 48,283) dans ce bloc de produit
+                # Recherche d'un prix en dollars dans ce bloc de produit
                 trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
                 if trouver_prix:
-                    # Nettoyage du texte pour le convertir en chiffre décimal Python propre
                     prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".")
                     try:
                         prix_chiffre = float(prix_texte)
@@ -63,22 +63,19 @@ if "shop" in query_params:
                 else:
                     dictionnaire_produits[nom_produit] = float(prix_bdd)
 
-        # Si l'IA n'a extrait aucun produit, on met une valeur de secours
         if not dictionnaire_produits:
             dictionnaire_produits["Tous les produits du catalogue"] = float(prix_bdd)
             total_catalogue_complet = float(prix_bdd)
 
         st.markdown("### 🛒 Finaliser votre commande en 1-Clic")
         
-        # Formulaire d'achat purement natif Streamlit (Garantit le calcul en temps réel sans iframe)
+        # Formulaire d'achat purement natif Streamlit
         with st.form("achat_client_form"):
-            # 1. Sélection de l'article avec affichage dynamique du nom
             produit_selectionne = st.selectbox(
                 "🛍️ Sélectionnez l'article à acheter :",
                 options=["🎁 Toute la boutique (Catalogue complet)"] + list(dictionnaire_produits.keys())
             )
             
-            # 2. Calcul en temps réel du prix à afficher sur le bouton de paiement
             if produit_selectionne == "🎁 Toute la boutique (Catalogue complet)":
                 prix_final_calculer = round(total_catalogue_complet, 2)
                 details_commande = "Tous les produits de la boutique"
@@ -94,31 +91,30 @@ if "shop" in query_params:
             
             if bouton_clique:
                 if nom_client and email_client and adresse_client:
-                    # Préparation des données pour FormSubmit
                     email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
+                    outils.enregistrer_vente(nom, prix_final_calculer)
+                    st.balloons()
                     
-                    donnees_formulaire = {
-                        "Boutique_Provenance": nom,
-                        "Produit_Achete": details_commande,
-                        "Prix_Total": f"{prix_final_calculer} $",
-                        "Nom_Client": nom_client,
-                        "Email_Client": email_client,
-                        "Adresse_Livraison": adresse_client,
-                        "_subject": f"🚨 NOUVELLE COMMANDE - {nom}"
-                    }
+                    # CORRECTION DU PAR-FEU : Soumission directe côté navigateur internet (Frontend)
+                    nom_formate = nom.lower().replace(" ", "-")
+                    url_retour = f"https://streamlit.app{nom_formate}"
                     
-                    # Envoi direct et sécurisé de serveur à serveur via Python requests
-                    import requests
-                    try:
-                        reponse_mail = requests.post(f"https://formsubmit.co{email_vendeur_cible}", data=donnees_formulaire)
-                        if reponse_mail.status_code == 200:
-                            outils.enregistrer_vente(nom, prix_final_calculer)
-                            st.balloons()
-                            st.success(f"🎉 Merci {nom_client} ! Votre commande pour '{details_commande}' a été transmise directement au vendeur.")
-                        else:
-                            st.error(f"Erreur lors de la transmission de la commande (Code : {reponse_mail.status_code}). Veuillez réessayer.")
-                    except Exception as err_api:
-                        st.error(f"Impossible de joindre le serveur de messagerie : {err_api}")
+                    html_soumission_directe = f"""
+                    <form id="redirect_form" action="https://formsubmit.co{email_vendeur_cible}" method="POST">
+                        <input type="hidden" name="Boutique_Provenance" value="{nom}">
+                        <input type="hidden" name="Produit_Achete" value="{details_commande}">
+                        <input type="hidden" name="Prix_Total" value="{prix_final_calculer} $">
+                        <input type="hidden" name="Nom_Client" value="{nom_client}">
+                        <input type="hidden" name="Email_Client" value="{email_client}">
+                        <input type="hidden" name="Adresse_Livraison" value="{adresse_client}">
+                        <input type="hidden" name="_subject" value="🚨 NOUVELLE COMMANDE - {nom}">
+                        <input type="hidden" name="_next" value="{url_retour}">
+                        <input type="hidden" name="_captcha" value="false">
+                    </form>
+                    <script>document.getElementById('redirect_form').submit();</script>
+                    """
+                    st.components.v1.html(html_soumission_directe, height=0, width=0)
+                    st.success(f"🎉 Validation en cours ! Redirection vers la passerelle sécurisée...")
                 else:
                     st.error("Veuillez remplir toutes les cases du formulaire.")
         st.stop()
@@ -186,9 +182,9 @@ st.markdown("### ⚡ Activité de la communauté en direct")
 notifs = outils.recuperer_notifications()
 st.markdown(f"""
 <div style='background-color: #1e1e24; padding: 12px; border-radius: 8px; border-left: 5px solid #66fcf1; margin-bottom: 20px;'>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 0 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 1 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 2 else ''}</span>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[0] if len(notifs) > 0 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[1] if len(notifs) > 1 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[2] if len(notifs) > 2 else ''}</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -257,7 +253,6 @@ else:
                     st.session_state.credits_restants -= 1
                     with st.spinner("L'IA conçoit votre catalogue de produits..."):
                         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
-                            # CORRECTION : On encadre explicitement la génération de prix raisonnables et réalistes pour éviter l'inflation de l'IA
                             consigne_produits = f"Trouve et liste exactement 10 produits très gagnants et viraux sur TikTok dans la niche '{niche_shop}'. Pour chaque produit, détermine et écris un prix public de vente réaliste compris obligatoirement entre 15.00\$ et 65.00\$ au format 'Prix : XX.XX \$'."
                             template_prix = "[Calculé par l'IA]"
                         else:
@@ -348,8 +343,8 @@ else:
             shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible
-                texte_origine = shop_cible
+                nom_boutique = shop_cible[0]
+                texte_origine = shop_cible[2]
                 
                 with st.spinner("Traduction par l'IA en cours..."):
                     prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
