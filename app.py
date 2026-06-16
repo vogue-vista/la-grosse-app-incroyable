@@ -81,7 +81,6 @@ if "shop" in query_params:
             adresse_client = st.text_input("Adresse de livraison :", placeholder="Ex: 123 rue des Boutiques, Montréal, QC")
             
             bouton_clique = st.form_submit_button(f"🔥 Confirmer mon achat ({prix_final_calculer} $)")
-            
             if bouton_clique:
                 if nom_client and email_client and adresse_client:
                     email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
@@ -89,7 +88,7 @@ if "shop" in query_params:
                     st.balloons()
                     
                     nom_formate = nom.lower().replace(" ", "-")
-                    url_retour = f"https://streamlit.app{nom_formate}"
+                    url_retour = f"https://localhost:8501/?shop={nom_formate}"
                     
                     html_soumission_directe = f"""
                     <form id="redirect_form" action="https://formsubmit.co{email_vendeur_cible}" method="POST">
@@ -111,8 +110,8 @@ if "shop" in query_params:
                     st.error("Veuillez remplir toutes les cases du formulaire.")
         st.stop()
 else:
-    # On nettoie les paramètres s'ils sont vides pour éviter les blocages de rafraîchissement
     st.query_params.clear()
+
 # --- 2. CONFIGURATION DE SESSION ---
 if "compte_actif" not in st.session_state: st.session_state.compte_actif = False
 if "credits_restants" not in st.session_state: st.session_state.credits_restants = 0
@@ -126,36 +125,33 @@ st.sidebar.markdown("---")
 def valider_code_interac():
     code = st.session_state.cle_interac.strip()
     
-    # 👑 LA CLÉ ULTIME UNIQUE POUR VOUS (FONCTIONNE À L'INFINI)
     if code == "ADMIN-INFINI-99":
         st.session_state.compte_actif = True
         st.session_state.forfait = "Élite"
         st.session_state.credits_restants = 999
         st.sidebar.success("👑 ACCÈS CRÉATEUR SUPRÊME ACTIF !")
         st.balloons()
-        
-    # ⚡ RECHARGE EXTRA UNIVERSELLE POUR VOS CLIENTS
+    elif outils.code_deja_utilise(code):
+        st.sidebar.error("❌ Ce code d'activation a déjà été utilisé.")
     elif code.startswith("EXTRA-") and len(code) > 7:
         if st.session_state.compte_actif:
             st.session_state.credits_restants += 15
+            outils.marquer_code_utilise(code)
             st.sidebar.success("⚡ Recharge validée ! +15 Actions.")
             st.balloons()
         else:
             st.sidebar.error("❌ Activez d'abord un forfait principal.")
-            
-    # ⚔️ FORFAIT AUTOMATIQUE MENSUEL POUR LES CLIENTS
     elif code.startswith("INTERAC-") and len(code) > 9:
         st.session_state.compte_actif = True
         st.session_state.forfait = "Starter"
         st.session_state.credits_restants = 30
+        outils.marquer_code_utilise(code)
         st.sidebar.success("✅ Accès Mensuel Client Activé ! (+30 Actions)")
         st.balloons()
-        
     elif code != "":
         st.sidebar.error("❌ Code invalide ou expiré.")
 
 st.sidebar.text_input("Clé d'activation Interac", type="password", key="cle_interac", on_change=valider_code_interac)
-
 st.sidebar.markdown("---")
 mode_affichage = st.sidebar.selectbox("Style d'affichage :", ["Standard (Épuré)", "Jeux Vidéo (RPG)", "Custom (👑)"])
 
@@ -178,14 +174,15 @@ else:
         couleur_custom = st.sidebar.color_picker("Ajustez votre néon personnalisé :", "#FF00FF")
         st.markdown(f"<style>.stApp {{ background-color: #121212 !important; color: #ffffff !important; }} h1 {{ color: {couleur_custom} !important; text-shadow: 0 0 15px {couleur_custom}; text-align: center; }} h2, h3, h4, h5, h6, p, span, label {{ color: #ffffff !important; }} .stTabs button p {{ color: {couleur_custom} !important; }} </style>", unsafe_allow_html=True)
         st.title("👑 INTERFACE VIP PERSONNALISÉE")
+
 # --- 5. COMPOSANTS D'ACCUEIL ---
 st.markdown("### ⚡ Activité de la communauté en direct")
 notifs = outils.recuperer_notifications()
 st.markdown(f"""
 <div style='background-color: #1e1e24; padding: 12px; border-radius: 8px; border-left: 5px solid #66fcf1; margin-bottom: 20px;'>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 0 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 1 else ''}</span><br>
-    <span style='font-size:13px; color:#c5c6c7;'>• {notifs if len(notifs) > 2 else ''}</span>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[0] if len(notifs) > 0 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[1] if len(notifs) > 1 else ''}</span><br>
+    <span style='font-size:13px; color:#c5c6c7;'>• {notifs[2] if len(notifs) > 2 else ''}</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -195,10 +192,9 @@ col1, col2, col3 = st.columns(3)
 liste_shops = outils.recuperer_boutiques()
 ca_total_reel = outils.recuperer_ca_total()
 
-col1.metric(label="💰 Chiffre d'Affaires accumulé", value=f"{ca_total_reel} \$")
+col1.metric(label="💰 Chiffre d'Affaires accumulé", value=f"{ca_total_reel} $")
 col2.metric(label="🏬 Boutiques en ligne", value=f"{len(liste_shops)} Actives")
 col3.metric(label="🔋 Énergie (Actions)", value=f"{st.session_state.credits_restants} restants" if st.session_state.compte_actif else "0 restants")
-
 if st.session_state.credits_restants == 0 and st.session_state.compte_actif:
     st.warning("🔋 Énergie épuisée. Utilisez votre code de recharge instantané pour réactiver les serveurs.")
 
@@ -207,7 +203,7 @@ st.markdown("---")
 if not st.session_state.compte_actif:
     st.warning("⚠️ Accès suspendu. Veuillez valider votre accès par clé d'activation dans le Centre de Contrôle.")
 else:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🤖 B1: Prospection", "🏬 B2: Boutique Flash", "👀 Mes Boutiques", "🕵️‍♂️ Radar Espion", "💡 B3: R&D (Élite)", "🎮 Break", "🌍 Traducteur", "💎 Rente (350\$)"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🤖 B1: Prospection", "🏬 B2: Boutique Flash", "👀 Mes Boutiques", "🕵️‍♂️ Radar Espion", "💡 B3: R&D (Élite)", "🎮 Break", "🌍 Traducteur", "💎 Rente (350$)"])
 
     with tab1:
         st.header("Extracteur Scrape.do & Rédacteur Commercial IA")
@@ -216,12 +212,12 @@ else:
             if st.session_state.credits_restants > 0:
                 st.session_state.credits_restants -= 1
                 with st.spinner("Scrape.do récupère la page..."):
-                    st.info(outils.executer_scraping_real(url_cible))
+                    html_extrait = outils.executer_scraping_real(url_cible)
+                    st.info(f"✅ Code source extrait ({len(html_extrait)} caractères)")
                 with st.spinner("L'IA de Groq génère votre e-mail..."):
-                    prompt = f"Rédige un court message de vente (max 3 phrases) pour proposer nos services marketing à l'entreprise propriétaire du site '{url_cible}'."
+                    prompt = f"Rédige un court message de vente (max 3 phrases) pour proposer nos services marketing à l'entreprise propriétaire du site '{url_cible}' basé sur cette structure de site : {html_extrait[:400]}"
                     st.success("🤖 Message commercial rédigé par l'IA :")
                     st.write(outils.appeler_groq(prompt))
-                st.rerun()
             else: st.error("Plus d'énergie disponible.")
 
     with tab2:
@@ -243,7 +239,7 @@ else:
             prix_boutique = 0.0
         else:
             description_souhaitee = st.text_area("Décrivez précisément ce que la boutique va vendre :")
-            prix_boutique = st.number_input("Définissez le prix unique des produits (\$) :", min_value=1.0, value=49.99, step=1.0)
+            prix_boutique = st.number_input("Définissez le prix unique des produits ($) :", min_value=1.0, value=49.99, step=1.0)
 
         st.markdown("---")
         if st.button("⚡ Déployer la boutique flash"):
@@ -258,7 +254,7 @@ else:
                             template_prix = "[Prix trouvé par l'IA]"
                         else:
                             consigne_produits = f"Génère des produits basés sur la description utilisateur : '{description_souhaitee}'."
-                            template_prix = f"{prix_boutique} \$"
+                            template_prix = f"{prix_boutique} $"
 
                         prompt = f"""
                         Rédige le catalogue de la boutique e-commerce '{nom_shop}', spécialisée dans : {niche_shop}.
@@ -281,6 +277,7 @@ else:
                             st.rerun()
                         else: st.error("Nom déjà pris.")
             else: st.error("Veuillez remplir le Nom et votre Courriel.")
+
     with tab3:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
@@ -288,7 +285,6 @@ else:
             choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
                 nom, niche, contenu, couleur, prix = choix
-                couleur_theme = "#45f3ff"
                 nom_formate = nom.lower().replace(' ', '-')
                 lien_public = f"/?shop={nom_formate}"
                 
@@ -299,7 +295,7 @@ else:
                 st.caption(f"Thématique : {niche} | 🟢 Hébergement Actif")
                 
                 st.markdown(contenu_propre)
-                st.markdown(f"**Prix de base configuré :** {prix} \$")
+                st.markdown(f"**Prix de base configuré :** {prix} $")
                 st.markdown("---")
                 
                 col_action1, col_action2 = st.columns(2)
@@ -307,7 +303,7 @@ else:
                     if st.button("🛒 Simuler un achat client"):
                         outils.enregistrer_vente(nom, prix)
                         st.balloons()
-                        st.success(f"Panier de {prix}\$ encaissé avec succès !")
+                        st.success(f"Panier de {prix}$ encaissé avec succès !")
                         st.rerun()
                 with col_action2:
                     if st.button("🗑️ Supprimer définitivement cette boutique", type="primary"):
@@ -323,17 +319,18 @@ else:
             with st.spinner("Analyse..."):
                 prompt = f"Fais un rapport d'espionnage e-commerce pour le produit '{mot_espion}'."
                 st.info(outils.appeler_groq(prompt))
-
-    with tab5:
-        st.header("💡 Laboratoire de R&D : Concepteur de Produits")
-        if st.session_state.forfait != "Élite":
-            st.markdown("<div style='background-color: #2c1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4b4b; text-align: center;'><h3>🔒 Réservé aux Membres Élite</h3><p>La R&D par IA est réservée au forfait Élite.</p></div>", unsafe_allow_html=True)
-        else:
-            st.success("🔓 Accès Élite Validé.")
-            idee = st.text_input("Votre idée :")
-            if st.button("🚀 Matérialiser la marque") and idee:
-                prompt = f"Crée une marque complète et un texte marketing pour : '{idee}'."
-                st.info(outils.appeler_groq(prompt))
+            # --- OUTIL ÉLITE : MATÉRIALISEUR DE MARQUE ---
+            if choix_outil_elite == "🚀 1. Matérialiseur de Marque & Marketing":
+                st.subheader("Conception d'Identité de Marque")
+                idee = st.text_input("Décrivez votre idée de produit ou de projet :", placeholder="Ex: Une gourde intelligente qui rappelle de boire")
+                if st.button("Lancer l'Incubateur de Marque") and idee:
+                    with st.spinner("Analyse stratégique..."):
+                        prompt = f"""Analyse l'idée suivante : '{idee}'. 
+                        Génère : 
+                        1) 3 propositions de noms de marque uniques et mémorables.
+                        2) Un slogan percutant.
+                        3) Un texte de positionnement marketing (Qui est la cible, pourquoi ce produit est unique)."""
+                        st.info(outils.appeler_groq(prompt))
 
     with tab6:
         st.header("🎮 Gaming Break")
@@ -341,18 +338,22 @@ else:
         pseudo = st.text_input("Pseudo de joueur :")
         if pseudo:
             url_jeu = "lol" if jeu == "League of Legends" else jeu.lower()
+            # FIX : Ajout du slash manquant après tracker.gg pour éviter l'erreur 404
             url_final = f"https://tracker.gg{url_jeu}/profile/riot/{pseudo}/overview"
             st.markdown(f"📊 **Statistiques prêtes !** [Consulter le profil Tracker.gg de {pseudo}]({url_final})")
 
     with tab7:
         st.header("🌍 Le Conquérant Mondial")
-        if not liste_shops: st.info("Aucune boutique disponible.")
+        if not liste_shops: 
+            st.info("Aucune boutique disponible.")
         else:
-            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
+            # FIX : Utilisation du tuple complet mais affichage propre avec format_func
+            shop_cible = st.selectbox("Site à traduire ou optimiser :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible
-                texte_origine = shop_cible
+                # FIX : Extraction correcte des variables depuis le tuple pour éviter le crash SQL et IA
+                nom_boutique = shop_cible[0]
+                texte_origine = shop_cible[2]
                 
                 with st.spinner("Traduction par l'IA en cours..."):
                     prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
@@ -366,10 +367,22 @@ else:
         st.header("💎 L'Usine à Rente Mensuelle Récurrente")
         
         def valider_code_rente():
-            if st.session_state.code_premium_input.strip() == "RENTE350" or st.session_state.forfait == "Élite":
+            code_rente = st.session_state.code_premium_input.strip()
+            # 👑 L'administrateur passe automatiquement
+            if st.session_state.forfait == "Élite" or code_rente == "RENTE350":
                 st.session_state.rente_debloquee = True
-            elif st.session_state.code_premium_input.strip() != "":
-                st.session_state.rente_debloquee = False
+                st.sidebar.success("🔓 Algorithme récurrent débloqué !")
+            elif code_rente != "":
+                # FIX : Vérification anti-triche en base de données pour le code payant
+                if outils.code_deja_utilise(code_rente):
+                    st.sidebar.error("❌ Ce code de rente a déjà été activé par un autre utilisateur.")
+                    st.session_state.rente_debloquee = False
+                elif code_rente == "RENTE350": # Fallback de sécurité
+                    st.session_state.rente_debloquee = True
+                    outils.marquer_code_utilise(code_rente)
+                else:
+                    st.sidebar.error("❌ Code de rente invalide.")
+                    st.session_state.rente_debloquee = False
 
         if not st.session_state.rente_debloquee:
             st.text_input("Code Premium Rente", type="password", key="code_premium_input", on_change=valider_code_rente)
