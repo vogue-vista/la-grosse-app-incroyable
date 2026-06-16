@@ -1,5 +1,6 @@
 import streamlit as st
 import outils
+import re
 
 outils.initialiser_base_de_donnees()
 
@@ -21,7 +22,7 @@ if "shop" in query_params:
         # Nettoyage de sécurité pour l'affichage public
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # Design lumineux et épuré pour vos clients
+        # Styles globaux de la page publique (fond clair et aéré pour le client)
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
@@ -33,47 +34,115 @@ if "shop" in query_params:
         st.subheader(f"✨ Spécialiste : {niche}")
         st.markdown("---")
         
-        # Affichage natif du contenu (Markdown ou HTML) pour éviter le texte brut
+        # Affichage du catalogue généré par l'IA
         st.markdown(contenu_client, unsafe_allow_html=True)
         st.markdown("---")
         st.markdown(f"### 💰 Prix unique de la boutique : **{prix} $**")
         
+        # Préparation des variables de redirection et de réception de courriels
         email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
         nom_formate = nom.lower().replace(" ", "-")
         url_redirection = f"https://streamlit.app{nom_formate}"
 
-        # Formulaire d'achat sécurisé
-        st.markdown(f"""
-        <div style='background-color: #f1f5f9; padding: 25px; border-radius: 12px; border: 1px solid #cbd5e1; margin-top: 25px;'>
-            <h3 style='color: #0f172a !important; margin-bottom: 20px;'>🛒 Finaliser votre commande en 1-Clic</h3>
-            <form action="https://formsubmit.co{email_vendeur_cible}" method="POST">
-                <input type="hidden" name="_subject" value="🚨 NOUVELLE COMMANDE - Boutique {nom}">
-                <input type="hidden" name="_next" value="{url_redirection}">
-                <input type="hidden" name="_captcha" value="false">
-                <input type="hidden" name="Boutique_Provenance" value="{nom}">
-                <input type="hidden" name="Prix_Total" value="{prix} $">
-                
-                <div style='margin-bottom: 15px;'>
-                    <label style='color: #334155 !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Nom complet :</label>
-                    <input type="text" name="Nom_Client" required style='width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff !important;'>
-                </div>
-                
-                <div style='margin-bottom: 15px;'>
-                    <label style='color: #334155 !important; font-weight: bold; display: block; margin-bottom: 5px;'>Votre Courriel :</label>
-                    <input type="email" name="Email_Client" required style='width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff !important;'>
-                </div>
-                
-                <div style='margin-bottom: 20px;'>
-                    <label style='color: #334155 !important; font-weight: bold; display: block; margin-bottom: 5px;'>Adresse de livraison :</label>
-                    <input type="text" name="Adresse_Livraison" required style='width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; color: #1c1d1f !important; background-color: #ffffff !important;'>
-                </div>
-                
-                <button type="submit" style='width: 100%; background-color: #ff4b4b; color: white !important; border: none; padding: 16px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;'>
-                    🔥 Confirmer mon achat ({prix} $)
-                </button>
-            </form>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("### 🛒 Finaliser votre commande en 1-Clic")
+
+        # FIX DU CODE BRUT : Utilisation de st.components.v1.html pour forcer l'exécution du formulaire HTML
+        formulaire_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    background-color: #f1f5f9;
+                    margin: 0;
+                    padding: 20px;
+                    color: #0f172a;
+                }}
+                .form-box {{
+                    background-color: #ffffff;
+                    padding: 25px;
+                    border-radius: 12px;
+                    border: 1px solid #cbd5e1;
+                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+                }}
+                .input-group {{
+                    margin-bottom: 15px;
+                }}
+                label {{
+                    font-weight: bold;
+                    display: block;
+                    margin-bottom: 5px;
+                    color: #334155;
+                    font-size: 14px;
+                }}
+                input {{
+                    width: 100%;
+                    padding: 12px;
+                    border-radius: 6px;
+                    border: 1px solid #cbd5e1;
+                    color: #1c1d1f;
+                    background-color: #ffffff;
+                    box-sizing: border-box;
+                    font-size: 16px;
+                }}
+                input:focus {{
+                    border-color: #ff4b4b;
+                    outline: none;
+                }}
+                button {{
+                    width: 100%;
+                    background-color: #ff4b4b;
+                    color: white;
+                    border: none;
+                    padding: 16px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    margin-top: 10px;
+                    transition: background-color 0.2s;
+                }}
+                button:hover {{
+                    background-color: #e03a3a;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="form-box">
+                <form action="https://formsubmit.co{email_vendeur_cible}" method="POST" target="_parent">
+                    <input type="hidden" name="_subject" value="🚨 NOUVELLE COMMANDE - Boutique {nom}">
+                    <input type="hidden" name="_next" value="{url_redirection}">
+                    <input type="hidden" name="_captcha" value="false">
+                    <input type="hidden" name="Boutique_Provenance" value="{nom}">
+                    <input type="hidden" name="Prix_Total" value="{prix} $">
+                    
+                    <div class="input-group">
+                        <label>Votre Nom complet :</label>
+                        <input type="text" name="Nom_Client" required placeholder="Ex: Jean Tremblay">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Votre Courriel :</label>
+                        <input type="email" name="Email_Client" required placeholder="Ex: jean.tremblay@email.com">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Adresse de livraison :</label>
+                        <input type="text" name="Adresse_Livraison" required placeholder="Ex: 123 rue des Boutiques, Montréal, QC">
+                    </div>
+                    
+                    <button type="submit">
+                        🔥 Confirmer mon achat ({prix} $)
+                    </button>
+                </form>
+            </div>
+        </body>
+        </html>
+        """
+        
+        st.components.v1.html(formulaire_html, height=450, scrolling=False)
         st.stop()
     else:
         st.error("Boutique introuvable ou abonnement expiré.")
@@ -216,7 +285,6 @@ else:
                             consigne_produits = f"Génère des produits basés sur la description utilisateur : '{description_souhaitee}'."
                             template_prix = f"{prix_boutique} \$"
 
-                        # NOUVEAU PROMPT : On demande du Markdown clair et structuré (Zéro bug d'affichage)
                         prompt = f"""
                         Rédige le catalogue de la boutique e-commerce '{nom_shop}', spécialisée dans : {niche_shop}.
                         Consigne : {consigne_produits}
@@ -242,7 +310,7 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
-            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
+            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x)
             if choix:
                 nom, niche, contenu, couleur, prix = choix
                 couleur_theme = "#45f3ff"
@@ -253,11 +321,9 @@ else:
                 
                 st.markdown(f"🔗 **Lien public de la boutique :** [Ouvrir la boutique]({lien_public})")
                 
-                # Interface d'administration privée (Thème sombre natif de Streamlit respecté)
                 st.markdown(f"### 🏬 {nom.upper()}")
                 st.caption(f"Thématique : {niche} | 🟢 Hébergement Actif")
                 
-                # Affichage natif du catalogue sans boîte brisée
                 st.markdown(contenu_propre)
                 st.markdown(f"**Prix configuré :** {prix} \$")
                 st.markdown("---")
@@ -300,11 +366,11 @@ else:
         st.header("🌍 Le Conquérant Mondial")
         if not liste_shops: st.info("Aucune boutique disponible.")
         else:
-            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
+            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x)
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible[0]
-                texte_origine = shop_cible[2]
+                nom_boutique = shop_cible
+                texte_origine = shop_cible
                 
                 with st.spinner("Traduction par l'IA en cours..."):
                     prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
