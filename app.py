@@ -419,7 +419,7 @@ else:
                 st.success("🎉 Traduction / Optimisation injectée !")
                 st.rerun()
 
-      with tab8:
+    with tab8:
         st.header("💎 L'Usine à Rente Mensuelle Récurrente")
         
         def valider_code_rente():
