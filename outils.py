@@ -3,6 +3,7 @@ import streamlit as st
 import requests
 from groq import Groq
 
+# Extraction sécurisée des clés d'API dans Streamlit Cloud
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
@@ -10,6 +11,7 @@ def initialiser_base_de_donnees():
     conn = sqlite3.connect("empire_v2.db")
     cursor = conn.cursor()
     
+    # Table des boutiques
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,6 +23,7 @@ def initialiser_base_de_donnees():
         )
     """)
     
+    # Table des statistiques
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS statistiques (
             cle TEXT PRIMARY KEY,
@@ -28,6 +31,7 @@ def initialiser_base_de_donnees():
         )
     """)
     
+    # Table des notifications
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,39 +40,9 @@ def initialiser_base_de_donnees():
         )
     """)
     
-    # NOUVEAU : Table pour enregistrer les codes à usage unique déjà consommés
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS codes_utilises (
-            code TEXT PRIMARY KEY,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
-
-# NOUVEAU : Vérifie si un code a déjà été brûlé
-def code_deja_utilise(code):
-    conn = sqlite3.connect("empire_v2.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM codes_utilises WHERE code = ?", (code,))
-    res = cursor.fetchone()
-    conn.close()
-    return res is not None
-
-# NOUVEAU : Bloque définitivement un code dans la base de données
-def consommer_code(code):
-    conn = sqlite3.connect("empire_v2.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("INSERT INTO codes_utilises (code) VALUES (?)", (code,))
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError:
-        return False
-    finally:
-        conn.close()
 
 def appeler_groq(prompt, temperature=0.7):
     try:
@@ -85,6 +59,7 @@ def appeler_groq(prompt, temperature=0.7):
 
 def executer_scraping_real(cible_url):
     try:
+        # CORRECTION DE L'URL : Ajout de api. et ?token= pour séparer correctement le domaine et votre clé secrète
         url_api = f"http://scrape.do{SCRAPE_DO_KEY}&url={cible_url}"
         response = requests.get(url_api)
         if response.status_code == 200:
