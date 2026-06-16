@@ -46,7 +46,7 @@ if "shop" in query_params:
 
         st.markdown("### 🛒 Finaliser votre commande en 1-Clic")
 
-        # FIX DU CODE BRUT : Utilisation de st.components.v1.html pour forcer l'exécution du formulaire HTML
+        # Formulaire HTML sécurisé exécuté via un composant isolé
         formulaire_html = f"""
         <!DOCTYPE html>
         <html>
@@ -310,7 +310,8 @@ else:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops: st.info("Aucun site actif sur votre infrastructure actuelle.")
         else:
-            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x)
+            # CORRECTION DU SÉLECTEUR : On force l'extraction textuelle du nom (premier élément du tuple x)
+            choix = st.selectbox("Sélectionnez le site à inspecter :", liste_shops, format_func=lambda x: x[0])
             if choix:
                 nom, niche, contenu, couleur, prix = choix
                 couleur_theme = "#45f3ff"
@@ -366,11 +367,12 @@ else:
         st.header("🌍 Le Conquérant Mondial")
         if not liste_shops: st.info("Aucune boutique disponible.")
         else:
-            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x)
+            # CORRECTION ÉGALEMENT ICI : Pour éviter le même crash de sélecteur
+            shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible
-                texte_origine = shop_cible
+                nom_boutique = shop_cible[0]
+                texte_origine = shop_cible[2]
                 
                 with st.spinner("Traduction par l'IA en cours..."):
                     prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
