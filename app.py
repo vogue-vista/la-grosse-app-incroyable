@@ -320,6 +320,7 @@ else:
                 prompt = f"Fais un rapport d'espionnage e-commerce pour le produit '{mot_espion}'."
                 st.info(outils.appeler_groq(prompt))
             # --- OUTIL ÉLITE : MATÉRIALISEUR DE MARQUE ---
+            # --- STRUCTURE CORRIGÉE : L'outil est bien à l'intérieur du bloc Élite ---
             if choix_outil_elite == "🚀 1. Matérialiseur de Marque & Marketing":
                 st.subheader("Conception d'Identité de Marque")
                 idee = st.text_input("Décrivez votre idée de produit ou de projet :", placeholder="Ex: Une gourde intelligente qui rappelle de boire")
@@ -332,13 +333,13 @@ else:
                         3) Un texte de positionnement marketing (Qui est la cible, pourquoi ce produit est unique)."""
                         st.info(outils.appeler_groq(prompt))
 
+    # --- RETOUR AUX ONGLETS PRINCIPAUX (FIN DE L'ONGLET 5 ÉLITE) ---
     with tab6:
         st.header("🎮 Gaming Break")
         jeu = st.selectbox("Jeu :", ["Fortnite", "League of Legends", "Valorant"])
         pseudo = st.text_input("Pseudo de joueur :")
         if pseudo:
             url_jeu = "lol" if jeu == "League of Legends" else jeu.lower()
-            # FIX : Ajout du slash manquant après tracker.gg pour éviter l'erreur 404
             url_final = f"https://tracker.gg{url_jeu}/profile/riot/{pseudo}/overview"
             st.markdown(f"📊 **Statistiques prêtes !** [Consulter le profil Tracker.gg de {pseudo}]({url_final})")
 
@@ -347,11 +348,9 @@ else:
         if not liste_shops: 
             st.info("Aucune boutique disponible.")
         else:
-            # FIX : Utilisation du tuple complet mais affichage propre avec format_func
             shop_cible = st.selectbox("Site à traduire ou optimiser :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                # FIX : Extraction correcte des variables depuis le tuple pour éviter le crash SQL et IA
                 nom_boutique = shop_cible[0]
                 texte_origine = shop_cible[2]
                 
@@ -368,16 +367,14 @@ else:
         
         def valider_code_rente():
             code_rente = st.session_state.code_premium_input.strip()
-            # 👑 L'administrateur passe automatiquement
             if st.session_state.forfait == "Élite" or code_rente == "RENTE350":
                 st.session_state.rente_debloquee = True
                 st.sidebar.success("🔓 Algorithme récurrent débloqué !")
             elif code_rente != "":
-                # FIX : Vérification anti-triche en base de données pour le code payant
                 if outils.code_deja_utilise(code_rente):
                     st.sidebar.error("❌ Ce code de rente a déjà été activé par un autre utilisateur.")
                     st.session_state.rente_debloquee = False
-                elif code_rente == "RENTE350": # Fallback de sécurité
+                elif code_rente == "RENTE350":
                     st.session_state.rente_debloquee = True
                     outils.marquer_code_utilise(code_rente)
                 else:
