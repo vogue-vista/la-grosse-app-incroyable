@@ -1,5 +1,6 @@
 import streamlit as st
 import outils
+import re
 
 outils.initialiser_base_de_donnees()
 
@@ -15,15 +16,17 @@ if "shop" in query_params:
             boutique_trouvee = s
             break
     if boutique_trouvee:
-        nom, niche, contenu, couleur, prix = boutique_trouvee
-        couleur_theme = "#ff4b4b"
+        nom, niche, contenu, couleur, prix_bdd = boutique_trouvee
         
+        # Nettoyage de sécurité pour l'affichage public
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
+        # Design lumineux et épuré pour vos clients
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #ffffff !important; color: #1c1d1f !important; }}
         h1, h2, h3, h4, h5, p, span, label, div {{ color: #1c1d1f !important; }}
+        div[data-testid="stForm"] {{ background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 25px; }}
         </style>
         """, unsafe_allow_html=True)
         
@@ -31,167 +34,93 @@ if "shop" in query_params:
         st.subheader(f"✨ Spécialiste : {niche}")
         st.markdown("---")
         
+        # Affichage du catalogue généré par l'IA
         st.markdown(contenu_client, unsafe_allow_html=True)
         st.markdown("---")
-        st.markdown(f"### 💰 Prix unique de la boutique : **{prix} $**")
         
-        email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
-        nom_formate = nom.lower().replace(" ", "-")
-        url_redirection = f"https://streamlit.app{nom_formate}"
+        # ALGORITHME : Extraction automatique des produits et de leurs vrais prix depuis le texte de l'IA
+        dictionnaire_produits = {}
+        total_catalogue_complet = 0.0
+        
+        # Découpage du catalogue par bloc de produit
+        blocs_produits = contenu_client.split("### 📦")
+        for bloc in blocs_produits:
+            if bloc.strip():
+                lignes_bloc = bloc.split("\n")
+                nom_produit = lignes_bloc[0].strip()
+                
+                # Recherche d'un prix en dollars (ex: 39.99, 48,283) dans ce bloc de produit
+                trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
+                if trouver_prix:
+                    # Nettoyage du texte pour le convertir en chiffre décimal Python propre
+                    prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".")
+                    try:
+                        prix_chiffre = float(prix_texte)
+                        dictionnaire_produits[nom_produit] = prix_chiffre
+                        total_catalogue_complet += prix_chiffre
+                    except ValueError:
+                        dictionnaire_produits[nom_produit] = float(prix_bdd)
+                else:
+                    dictionnaire_produits[nom_produit] = float(prix_bdd)
+
+        # Si l'IA n'a extrait aucun produit, on met une valeur de secours
+        if not dictionnaire_produits:
+            dictionnaire_produits["Tous les produits du catalogue"] = float(prix_bdd)
+            total_catalogue_complet = float(prix_bdd)
 
         st.markdown("### 🛒 Finaliser votre commande en 1-Clic")
-
-        # Extraction des noms de produits du catalogue pour remplir automatiquement le menu déroulant
-        options_html = "<option value='Tous les produits'>🎁 Tout le catalogue d'un coup</option>"
-        lignes = contenu_client.split("\n")
-        for ligne in lignes:
-            if ligne.startswith("### 📦"):
-                nom_prod = ligne.replace("### 📦", "").strip()
-                options_html += f"<option value='{nom_prod}'>📦 {nom_prod}</option>"
-
-        # FIX TOTAL : Utilisation de JavaScript Fetch pour envoyer le courriel de commande sans blocage
-        formulaire_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                body {{
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    background-color: #f1f5f9;
-                    margin: 0;
-                    padding: 20px;
-                    color: #0f172a;
-                }}
-                .form-box {{
-                    background-color: #ffffff;
-                    padding: 25px;
-                    border-radius: 12px;
-                    border: 1px solid #cbd5e1;
-                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-                }}
-                .input-group {{
-                    margin-bottom: 15px;
-                }}
-                label {{
-                    font-weight: bold;
-                    display: block;
-                    margin-bottom: 5px;
-                    color: #334155;
-                    font-size: 14px;
-                }}
-                input, select {{
-                    width: 100%;
-                    padding: 12px;
-                    border-radius: 6px;
-                    border: 1px solid #cbd5e1;
-                    color: #1c1d1f;
-                    background-color: #ffffff;
-                    box-sizing: border-box;
-                    font-size: 16px;
-                }}
-                input:focus, select:focus {{
-                    border-color: #ff4b4b;
-                    outline: none;
-                }}
-                button {{
-                    width: 100%;
-                    background-color: #ff4b4b;
-                    color: white;
-                    border: none;
-                    padding: 16px;
-                    font-size: 18px;
-                    font-weight: bold;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    margin-top: 10px;
-                }}
-                button:hover {{ background-color: #e03a3a; }}
-                .success-msg {{
-                    display: none;
-                    background-color: #d1fae5;
-                    color: #065f46;
-                    padding: 15px;
-                    border-radius: 6px;
-                    text-align: center;
-                    font-weight: bold;
-                    margin-top: 15px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="form-box">
-                <form id="orderForm">
-                    <div class="input-group">
-                        <label>🛍️ Sélectionnez l'article à acheter :</label>
-                        <select name="Produit_Achete" id="produitSelect">
-                            {options_html}
-                        </select>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Votre Nom complet :</label>
-                        <input type="text" name="Nom_Client" required placeholder="Ex: Jean Tremblay">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Votre Courriel :</label>
-                        <input type="email" name="Email_Client" required placeholder="Ex: jean.tremblay@email.com">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Adresse de livraison :</label>
-                        <input type="text" name="Adresse_Livraison" required placeholder="Ex: 123 rue des Boutiques, Montréal, QC">
-                    </div>
-                    
-                    <button type="submit" id="submitBtn">🔥 Confirmer mon achat ({prix} $)</button>
-                </form>
-                <div id="successBlock" class="success-msg">🎉 Merci ! Votre commande a été transmise avec succès au vendeur.</div>
-            </div>
-
-            <script>
-                document.getElementById('orderForm').addEventListener('submit', function(e) {{
-                    e.preventDefault();
-                    const btn = document.getElementById('submitBtn');
-                    btn.innerText = "⏳ Envoi en cours...";
-                    btn.disabled = true;
-
-                    const formData = new FormData();
-                    formData.append('Boutique_Provenance', "{nom}");
-                    formData.append('Prix_Total', "{prix} $");
-                    formData.append('Produit_Selectionne', document.getElementById('produitSelect').value);
-                    formData.append('Nom_Client', e.target.Nom_Client.value);
-                    formData.append('Email_Client', e.target.Email_Client.value);
-                    formData.append('Adresse_Livraison', e.target.Adresse_Livraison.value);
-                    formData.append('_subject', "🚨 NOUVELLE COMMANDE - Boutique {nom}");
-                    formData.append('_captcha', "false");
-
-                    fetch('https://formsubmit.co{email_vendeur_cible}', {{
-                        method: 'POST',
-                        body: formData
-                    }})
-                    .then(response => {{
-                        if(response.ok) {{
-                            document.getElementById('orderForm').style.display = 'none';
-                            document.getElementById('successBlock').style.display = 'block';
-                        }} else {{
-                            alert("Erreur lors de la validation. Veuillez réessayer.");
-                            btn.innerText = "🔥 Confirmer mon achat ({prix} $)";
-                            btn.disabled = false;
-                        }}
-                    }})
-                    .catch(error => {{
-                        alert("Erreur de connexion.");
-                        btn.innerText = "🔥 Confirmer mon achat ({prix} $)";
-                        btn.disabled = false;
-                    }});
-                }});
-            </script>
-        </body>
-        </html>
-        """
         
-        st.components.v1.html(formulaire_html, height=530, scrolling=False)
+        # Formulaire d'achat purement natif Streamlit (Garantit le calcul en temps réel sans iframe)
+        with st.form("achat_client_form"):
+            # 1. Sélection de l'article avec affichage dynamique du nom
+            produit_selectionne = st.selectbox(
+                "🛍️ Sélectionnez l'article à acheter :",
+                options=["🎁 Toute la boutique (Catalogue complet)"] + list(dictionnaire_produits.keys())
+            )
+            
+            # 2. Calcul en temps réel du prix à afficher sur le bouton de paiement
+            if produit_selectionne == "🎁 Toute la boutique (Catalogue complet)":
+                prix_final_calculer = round(total_catalogue_complet, 2)
+                details_commande = "Tous les produits de la boutique"
+            else:
+                prix_final_calculer = dictionnaire_produits[produit_selectionne]
+                details_commande = produit_selectionne
+                
+            nom_client = st.text_input("Votre Nom complet :", placeholder="Ex: Jean Tremblay")
+            email_client = st.text_input("Votre Courriel :", placeholder="Ex: jean.tremblay@email.com")
+            adresse_client = st.text_input("Adresse de livraison :", placeholder="Ex: 123 rue des Boutiques, Montréal, QC")
+            
+            bouton_clique = st.form_submit_button(f"🔥 Confirmer mon achat ({prix_final_calculer} $)")
+            
+            if bouton_clique:
+                if nom_client and email_client and adresse_client:
+                    # Préparation des données pour FormSubmit
+                    email_vendeur_cible = couleur if couleur and "@" in couleur else "votre-email@example.com"
+                    
+                    donnees_formulaire = {
+                        "Boutique_Provenance": nom,
+                        "Produit_Achete": details_commande,
+                        "Prix_Total": f"{prix_final_calculer} $",
+                        "Nom_Client": nom_client,
+                        "Email_Client": email_client,
+                        "Adresse_Livraison": adresse_client,
+                        "_subject": f"🚨 NOUVELLE COMMANDE - {nom}"
+                    }
+                    
+                    # Envoi direct et sécurisé de serveur à serveur via Python requests
+                    import requests
+                    try:
+                        reponse_mail = requests.post(f"https://formsubmit.co{email_vendeur_cible}", data=donnees_formulaire)
+                        if reponse_mail.status_code == 200:
+                            outils.enregistrer_vente(nom, prix_final_calculer)
+                            st.balloons()
+                            st.success(f"🎉 Merci {nom_client} ! Votre commande pour '{details_commande}' a été transmise directement au vendeur.")
+                        else:
+                            st.error(f"Erreur lors de la transmission de la commande (Code : {reponse_mail.status_code}). Veuillez réessayer.")
+                    except Exception as err_api:
+                        st.error(f"Impossible de joindre le serveur de messagerie : {err_api}")
+                else:
+                    st.error("Veuillez remplir toutes les cases du formulaire.")
         st.stop()
     else:
         st.error("Boutique introuvable ou abonnement expiré.")
@@ -328,11 +257,12 @@ else:
                     st.session_state.credits_restants -= 1
                     with st.spinner("L'IA conçoit votre catalogue de produits..."):
                         if methode_creation == "🔥 Mode Automatique (10 Produits Gagnants & Viraux TikTok/YouTube)":
-                            consigne_produits = f"Trouve et liste exactement 10 produits très gagnants et viraux sur TikTok/YouTube Shorts dans la niche '{niche_shop}'. Pour chaque produit, donne un prix de vente e-commerce cohérent (ex: 34.99, 19.99)."
-                            template_prix = "[Prix trouvé par l'IA]"
+                            # CORRECTION : On encadre explicitement la génération de prix raisonnables et réalistes pour éviter l'inflation de l'IA
+                            consigne_produits = f"Trouve et liste exactement 10 produits très gagnants et viraux sur TikTok dans la niche '{niche_shop}'. Pour chaque produit, détermine et écris un prix public de vente réaliste compris obligatoirement entre 15.00\$ et 65.00\$ au format 'Prix : XX.XX \$'."
+                            template_prix = "[Calculé par l'IA]"
                         else:
                             consigne_produits = f"Génère des produits basés sur la description utilisateur : '{description_souhaitee}'."
-                            template_prix = f"{prix_boutique} \$"
+                            template_prix = f"Prix : {prix_boutique} \$"
 
                         prompt = f"""
                         Rédige le catalogue de la boutique e-commerce '{nom_shop}', spécialisée dans : {niche_shop}.
@@ -374,7 +304,7 @@ else:
                 st.caption(f"Thématique : {niche} | 🟢 Hébergement Actif")
                 
                 st.markdown(contenu_propre)
-                st.markdown(f"**Prix configuré :** {prix} \$")
+                st.markdown(f"**Prix de base configuré :** {prix} \$")
                 st.markdown("---")
                 
                 if st.button("🛒 Simuler un achat client"):
@@ -418,8 +348,8 @@ else:
             shop_cible = st.selectbox("Site à traduire :", liste_shops, format_func=lambda x: x[0])
             langue = st.selectbox("Langue cible :", ["Français 🇫🇷", "Anglais 🇺🇸", "Espagnol 🇪🇸"])
             if st.button("⚡ Traduire"):
-                nom_boutique = shop_cible[0]
-                texte_origine = shop_cible[2]
+                nom_boutique = shop_cible
+                texte_origine = shop_cible
                 
                 with st.spinner("Traduction par l'IA en cours..."):
                     prompt = f"Traduis ce texte de boutique en {langue} de façon très vendeuse. Si la langue cible est le Français, réécris-le simplement dans un style marketing ultra percutant : {texte_origine}"
