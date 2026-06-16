@@ -85,11 +85,11 @@ def appeler_groq(prompt, temperature=0.7):
 
 def executer_scraping_real(cible_url):
     try:
-        url_api = f"http://scrape.do{SCRAPE_DO_KEY}&url={cible_url}"
+        # Correction de la syntaxe de l'URL d'API Scrape.do avec le paramètre token
+        url_api = f"https://scrape.do{SCRAPE_DO_KEY}&url={cible_url}"
         response = requests.get(url_api)
         if response.status_code == 200:
-            html_brut = response.text[:500] 
-            return f"✅ Données extraites avec succès via Scrape.do !\n\nExtrait du code source de la page ciblée :\n{html_brut}..."
+            return response.text
         else:
             return f"❌ Échec du scraping via Scrape.do. Code erreur : {response.status_code}"
     except Exception as e:
@@ -142,7 +142,8 @@ def recuperer_ca_total():
     cursor.execute("SELECT valeur FROM statistiques WHERE cle = 'ca_total'")
     res = cursor.fetchone()
     conn.close()
-    return res if res else 0.0
+    # Correction pour extraire la valeur numérique du tuple SQL
+    return res[0] if res else 0.0
 
 def enregistrer_vente(nom_boutique, montant):
     conn = sqlite3.connect("empire_v2.db")
@@ -164,4 +165,4 @@ def recuperer_notifications():
             "📡 Connexion établie avec le réseau de proxies rotatifs de Scrape.do.",
             "🤖 IA Groq synchronisée et prête à propulser vos ventes."
         ]
-    return [r for r in res]
+    return [r[0] for r in res] # Extraction propre des textes sans les crochets SQL
