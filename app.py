@@ -21,10 +21,16 @@ if "shop" in query_params:
     if boutique_trouvee:
         nom, niche, contenu, couleur, prix_bdd = boutique_trouvee
         
+        # Sécurité sur le prix par défaut de la BDD pour éviter les crashs float()
+        try:
+            prix_bdd_propre = float(prix_bdd)
+        except (ValueError, TypeError):
+            prix_bdd_propre = 0.0
+        
         # Nettoyage des balises Markdown résiduelles
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # ✅ FIX DESIGN : Couleurs claires, contrastées et lisibles (Adieu le sombre sur sombre)
+        # ✅ FIX DESIGN : Couleurs claires, contrastées et lisibles
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #f8fafc !important; color: #0f172a !important; }}
@@ -69,14 +75,14 @@ if "shop" in query_params:
                         dictionnaire_produits[nom_produit] = prix_chiffre
                         total_catalogue_complet += prix_chiffre
                     except ValueError:
-                        dictionnaire_produits[nom_produit] = float(prix_bdd)
+                        dictionnaire_produits[nom_produit] = prix_bdd_propre
                 else:
-                    dictionnaire_produits[nom_produit] = float(prix_bdd)
+                    dictionnaire_produits[nom_produit] = prix_bdd_propre
 
         # Remplissage par défaut si aucun produit n'est isolé
         if not dictionnaire_produits:
-            dictionnaire_produits["Formule Unique d'Abonnement / Produit Spécial"] = float(prix_bdd)
-            total_catalogue_complet = float(prix_bdd)
+            dictionnaire_produits["Formule Unique d'Abonnement / Produit Spécial"] = prix_bdd_propre
+            total_catalogue_complet = prix_bdd_propre
 
         # Détection du mode (Abonnement vs Produit Standard)
         est_un_abonnement = "Abonnement" in niche
@@ -93,18 +99,16 @@ if "shop" in query_params:
                 st.info(f"💳 Type de forfait : {produit_selectionne} — Facturation récurrente automatique.")
                 details_commande = f"Abonnement Récurrent : {produit_selectionne}"
             else:
-                # ✅ FIX PRIX : Le sélecteur met à jour instantanément le prix dynamique de l'objet
                 options_achat = list(dictionnaire_produits.keys())
                 if len(options_achat) > 1:
                     options_achat = ["🎁 Commander tout le catalogue complet"] + options_achat
-                    
                 produit_selectionne = st.selectbox("🛍️ Sélectionnez votre article :", options=options_achat)
                 
                 if produit_selectionne == "🎁 Commander tout le catalogue complet":
                     prix_final_calculer = round(total_catalogue_complet, 2)
                     details_commande = "Catalogue complet (Tous les articles)"
                 else:
-                    prix_final_calculer = dictionnaire_produits[produit_selectionne]
+                    prix_final_calculer = dictionnaire_produits.get(produit_selectionne, prix_bdd_propre)
                     details_commande = produit_selectionne
             
             nom_client = st.text_input("Nom complet de facturation :", placeholder="Ex: Jean Tremblay")
@@ -135,19 +139,19 @@ if "shop" in query_params:
                     nom_formate = nom.lower().replace(" ", "-")
                     url_retour = f"https://streamlit.app{nom_formate}"
                     
-                    # Passerelle sécurisée externe via FormSubmit.co
+                    # Passerelle sécurisée externe via FormSubmit.co (Correction du slash)
                     html_soumission_directe = f"""
-                    <form id=\"redirect_form\" action=\"https://formsubmit.co{email_vendeur_cible}\" method=\"POST\">
-                        <input type=\"hidden\" name=\"Boutique_Provenance\" value=\"{nom}\">
-                        <input type=\"hidden\" name=\"Type_Offre\" value=\"{niche}\">
-                        <input type=\"hidden\" name=\"Produit_Achete\" value=\"{details_commande}\">
-                        <input type=\"hidden\" name=\"Montant_Encaisse\" value=\"{prix_final_calculer} $\">
-                        <input type=\"hidden\" name=\"Nom_Acheteur\" value=\"{nom_client}\">
-                        <input type=\"hidden\" name=\"Email_Acheteur\" value=\"{email_client}\">
-                        <input type=\"hidden\" name=\"Destination_Livraison\" value=\"{adresse_client}\">
-                        <input type=\"hidden\" name=\"_subject\" value=\"🚨 NOUVELLE TRANSACTION EMPIRE - {nom}\">
-                        <input type=\"hidden\" name=\"_next\" value=\"{url_retour}\">
-                        <input type=\"hidden\" name=\"_captcha\" value=\"false\">
+                    <form id="redirect_form" action="https://formsubmit.co{email_vendeur_cible}" method="POST">
+                        <input type="hidden" name="Boutique_Provenance" value="{nom}">
+                        <input type="hidden" name="Type_Offre" value="{niche}">
+                        <input type="hidden" name="Produit_Achete" value="{details_commande}">
+                        <input type="hidden" name="Montant_Encaisse" value="{prix_final_calculer} $">
+                        <input type="hidden" name="Nom_Acheteur" value="{nom_client}">
+                        <input type="hidden" name="Email_Acheteur" value="{email_client}">
+                        <input type="hidden" name="Destination_Livraison" value="{adresse_client}">
+                        <input type="hidden" name="_subject" value="🚨 NOUVELLE TRANSACTION EMPIRE - {nom}">
+                        <input type="hidden" name="_next" value="{url_retour}">
+                        <input type="hidden" name="_captcha" value="false">
                     </form>
                     <script>document.getElementById('redirect_form').submit();</script>
                     """
@@ -155,7 +159,8 @@ if "shop" in query_params:
                     st.success(f"🎉 Paiement sécurisé validé ! Redirection finale vers votre espace...")
                 else:
                     st.error("⚠️ Erreur : Veuillez remplir l'intégralité des champs du formulaire.")
-        # --- ✅ FIX AGENT IA INTERACTIF ET ACCESSIBLE (Widget de discussion réel) ---
+                    
+        # --- ✅ FIX AGENT IA INTERACTIF ET ACCESSIBLE ---
         if "🤖 Agent Actif" in contenu:
             st.markdown("---")
             st.markdown("### 💬 Une question ? Discutez avec notre Assistant IA en direct")
@@ -163,19 +168,16 @@ if "shop" in query_params:
             if "historique_chat_public" not in st.session_state:
                 st.session_state.historique_chat_public = []
                 
-            # Affichage des messages échangés
             for msg in st.session_state.historique_chat_public:
                 with st.chat_message(msg["role"]):
                     st.write(msg["content"])
                     
-            # Capture de la question du client
             question_client = st.chat_input("Posez votre question sur nos produits ici...")
             if question_client:
                 with st.chat_message("user"):
                     st.write(question_client)
                 st.session_state.historique_chat_public.append({"role": "user", "content": question_client})
                 
-                # Construction d'un prompt intelligent contenant le contexte du catalogue
                 prompt_assistant = f"""Tu es l'assistant commercial virtuel attitré de la boutique en ligne '{nom}'.
                 Voici le catalogue complet de nos produits disponibles :
                 {contenu_client}
@@ -188,6 +190,7 @@ if "shop" in query_params:
                         reponse_ia = outils.appeler_groq(prompt_assistant, temperature=0.5)
                         st.write(reponse_ia)
                 st.session_state.historique_chat_public.append({"role": "assistant", "content": reponse_ia})
+                st.rerun()
         st.stop()
 
 # --- 2. CONFIGURATION DE SESSION ADMINISTRATEUR ---
@@ -207,7 +210,7 @@ def valider_code_interac():
         st.session_state.compte_actif = True
         st.session_state.forfait = "Élite"
         st.session_state.credits_restants = 999
-        st.sidebar.success("👑 SYSTÈMEDÉVELOPPEUR SUPRÊME ACTIF !")
+        st.sidebar.success("👑 SYSTÈME DÉVELOPPEUR SUPRÊME ACTIF !")
         st.balloons()
         st.rerun()
     elif code.startswith("EXTRA-") and len(code) > 7:
@@ -262,11 +265,17 @@ else:
 
 st.markdown("### ⚡ Flux d'Activité Réseau")
 notifs = outils.recuperer_notifications()
+
+# Nettoyage de l'affichage des lignes de notif
+notif_1 = notifs[0] if len(notifs) > 0 else ""
+notif_2 = notifs[1] if len(notifs) > 1 else ""
+notif_3 = notifs[2] if len(notifs) > 2 else ""
+
 st.markdown(f"""
 <div style='background-color: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #00ffcc; margin-bottom: 25px;'>
-    <span style='font-size:13px; color:#cbd5e1;'>• {notifs[0] if len(notifs) > 0 else ''}</span><br>
-    <span style='font-size:13px; color:#cbd5e1;'>• {notifs[1] if len(notifs) > 1 else ''}</span><br>
-    <span style='font-size:13px; color:#cbd5e1;'>• {notifs[2] if len(notifs) > 2 else ''}</span>
+    <span style='font-size:13px; color:#cbd5e1;'>• {notif_1}</span><br>
+    <span style='font-size:13px; color:#cbd5e1;'>• {notif_2}</span><br>
+    <span style='font-size:13px; color:#cbd5e1;'>• {notif_3}</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -287,18 +296,17 @@ st.markdown("---")
 if not st.session_state.compte_actif:
     st.warning("⚠️ Terminal restreint. Veuillez insérer une clé d'activation valide pour débloquer l'accès aux modules.")
 else:
-    # Changement majeur : Remplacement complet du module gaming par le Studio Branding
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "🤖 B1: Prospection", "🏬 B2: Boutique Multi-Produits", "👀 Mes Boutiques", 
         "🕵️‍♂️ Radar Espion", "💡 B3: R&D Élite", "🎨 Studio Branding", "💎 Rente Réelle"
     ])
-
     with tab1:
         st.header("🕵️‍♂️ Agent d'Extraction de Leads & Prospection")
         st.markdown("Scanne le réseau industriel pour cibler des entreprises, extraire leurs métadonnées et bâtir une approche commerciale.")
         
         niche_prospect = st.text_input("Secteur d'activité et zone géographique :", "Agences immobilières Montréal")
         
+        # ✅ FIX SYNTAXE : Ligne scindée proprement sur deux lignes
         if st.button("🔥 Lancer le scanneur de leads"):
             if st.session_state.credits_restants > 0:
                 st.session_state.credits_restants -= 1
@@ -315,7 +323,6 @@ else:
                 
                 for idx, url in enumerate(urls_trouvees[:3]):
                     with st.spinner(f"Interconnexion avec {url}..."):
-                        # ✅ FIX : Validation de sécurité pour éviter le doublage du protocole
                         url_cible_verifiee = url if url.startswith(("http://", "https://")) else f"https://{url}"
                         html_brut = outils.executer_scraping_real(url_cible_verifiee)
                         
@@ -340,6 +347,7 @@ else:
                 prompt_pitch = f"Rédige un courriel de prospection commerciale B2B percutant pour l'entreprise {lead_selectionne['nom']} ({lead_selectionne['url']}) spécialisée dans la niche {niche_prospect}. Le mail doit proposer nos services de création de tunnels de vente."
                 pitch_final = outils.appeler_groq(prompt_pitch)
                 st.text_area("✍️ Proposition rédigée par l'IA :", value=pitch_final, height=250)
+
     with tab2:
         st.header("🏬 Concepteur de Boutique Flash Multi-Produits")
         st.markdown("Créez instantanément une vitrine e-commerce complète. Vous déterminez précisément le nombre de produits et leurs tarifs.")
@@ -348,7 +356,6 @@ else:
         niche_shop = st.text_input("Thématique / Niche :", "Vêtements Streetwear Cyberpunk")
         email_vendeur = st.text_input("Courriel de réception des paiements (FormSubmit) :", "votre-compte@email.com")
         
-        # ✅ FIX MULTI-PRODUITS : Choix dynamique du nombre d'articles
         nombre_de_produits = st.slider("Nombre d'articles à intégrer au catalogue :", min_value=1, max_value=6, value=3)
         
         liste_parametres_produits = []
@@ -357,104 +364,42 @@ else:
         col_p1, col_p2 = st.columns(2)
         for i in range(nombre_de_produits):
             with col_p1:
-                nom_p = st.text_input(f"📦 Nom du produit #{i+1} :", f"Article Premium Alpha {i+1}", key=f"nom_p_{i}")
+                nom_p = st.text_input(f"📦 Nom du produit #{i+1} :", f"Article Premium Alpha {i+1}", key=f"nom_p_{i}_{nombre_de_produits}")
             with col_p2:
-                prix_p = st.number_input(f"💰 Prix de vente ($) #{i+1} :", min_value=1.0, value=29.99 + (i*10), step=5.0, key=f"prix_p_{i}")
+                prix_p = st.number_input(f"💰 Prix de vente ($) #{i+1} :", min_value=1.0, value=29.99 + (i*10), step=5.0, key=f"prix_p_{i}_{nombre_de_produits}")
             liste_parametres_produits.append({"nom": nom_p, "prix": prix_p})
 
+        # ✅ FIX SYNTAXE : Ligne scindée proprement sur deux lignes
         if st.button("🚀 Forger l'infrastructure de la boutique"):
             if nom_shop and email_vendeur:
-                st.session_state.credits_restants -= 1
-                
-                with st.spinner("L'IA synthétise les descriptions marketing de vos articles..."):
-                    # Construction d'un prompt guidant l'IA à écrire les prix spécifiques demandés
-                    structure_demandee = ""
-                    for p in liste_parametres_produits:
-                        structure_demandee += f"\n- Produit : {p['nom']} | Prix : {p['prix']} $\n"
+                if st.session_state.credits_restants > 0:
+                    st.session_state.credits_restants -= 1
+                    
+                    with st.spinner("L'IA synthétise les descriptions marketing de vos articles..."):
+                        structure_demandee = ""
+                        for p in liste_parametres_produits:
+                            structure_demandee += f"\n- Produit : {p['nom']} | Prix : {p['prix']} $\n"
+                            
+                        prompt_catalogue = f"""Tu es un copywriter e-commerce de génie. Rédige les fiches descriptives pour la boutique '{nom_shop}' ({niche_shop}).
+                        Tu dois obligatoirement inclure ces {nombre_de_produits} produits spécifiques avec leurs prix exacts :
+                        {structure_demandee}
                         
-                    prompt_catalogue = f"""Tu es un copywriter e-commerce de génie. Rédige les fiches descriptives pour la boutique '{nom_shop}' ({niche_shop}).
-                    Tu dois obligatoirement inclure ces {nombre_de_produits} produits spécifiques avec leurs prix exacts :
-                    {structure_demandee}
-                    
-                    Génère le rendu au format Markdown en utilisant STRICTEMENT cette mise en page pour chaque produit :
-                    ### 📦 [Insérer ici le Nom exact du produit]
-                    * **Description** : [Insérer une description attractive et moderne d'environ 3 phrases]
-                    * **🔥 Pourquoi ce produit est viral** : [Argumentaire de vente massif de style TikTok Trend]
-                    * **Prix** : [Insérer ici le prix exact spécifié] $
-                    
-                    N'écris rien d'autre. Pas d'introduction, pas de conclusion."""
-                    
-                    catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.6)
-                    
-                    # Déploiement en base de données
-                    if outils.ajouter_boutique(nom_shop, niche_shop, catalogue_markdown, liste_parametres_produits[0]["prix"], couleur=email_vendeur):
-                        st.toast(f"🏬 Boutique '{nom_shop}' injectée sur le réseau !", icon="✅")
-                        st.rerun()
-                    else:
-                        st.error("❌ Ce nom de boutique est déjà réservé sur votre serveur.")
+                        Génère le rendu au format Markdown en utilisant STRICTEMENT cette mise en page pour chaque produit :
+                        ### 📦 [Insérer ici le Nom exact du produit]
+                        * **Description** : [Insérer une description attractive et moderne d'environ 3 phrases]
+                        * **🔥 Pourquoi ce produit est viral** : [Argumentaire de vente massif de style TikTok Trend]
+                        * **Prix** : [Insérer ici le prix exact spécifié] $
+                        
+                        N'écris rien d'autre. Pas d'introduction, pas de conclusion."""
+                        
+                        catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.6)
+                        
+                        if outils.ajouter_boutique(nom_shop, niche_shop, catalogue_markdown, liste_parametres_produits[0]["prix"], couleur=email_vendeur):
+                            st.toast(f"🏬 Boutique '{nom_shop}' injectée sur le réseau !", icon="✅")
+                            st.rerun()
+                        else:
+                            st.error("❌ Ce nom de boutique est déjà réservé sur votre serveur.")
+                else:
+                    st.error("🔋 Énergie insuffisante.")
             else:
                 st.error("⚠️ Veuillez renseigner le nom de la boutique et votre courriel d'encaissement.")
-
-    with tab3:
-        st.header("🌐 Vos Serveurs d'Hébergement Actifs")
-        if not liste_shops:
-            st.info("Aucun site web actif détecté sur vos grappes de serveurs actuellement.")
-        else:
-            choix = st.selectbox("Sélectionnez la boutique à inspecter :", liste_shops, format_func=lambda x: f"⚙️ {x[0]} [{x[1]}]")
-            if choix:
-                nom, niche, contenu, couleur, prix = choix
-                nom_formate = nom.lower().replace(' ', '-')
-                lien_public = f"/?shop={nom_formate}"
-                contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
-                
-                st.markdown(f"🔗 **Lien hypertexte de votre boutique :** [Visiter la page publique de l'application]({lien_public})")
-                st.markdown(f"### 🏬 SYSTEM FEED : {nom.upper()}")
-                st.markdown(contenu_propre, unsafe_allow_html=True)
-                st.markdown("---")
-                
-                c_act1, c_act2 = st.columns(2)
-                with c_act1:
-                    if st.button("🛒 Injecter une vente artificielle"):
-                        outils.enregistrer_vente(nom, prix)
-                        st.balloons()
-                        st.rerun()
-                with c_act2:
-                    if st.button("🗑️ Raser cette boutique du serveur", type="primary"):
-                        if outils.supprimer_boutique(nom):
-                            st.rerun()
-
-    with tab4:
-        st.header("🕵️‍♂️ Radar Espion")
-        mot_espion = st.text_input("Saisissez un nom d'article ou une tendance à auditer :")
-        if st.button("🔍 Lancer les algorithmes d'espionnage") and mot_espion:
-            with st.spinner("Scan des bases concurrentes..."):
-                prompt_audit = f"Fournis une analyse de positionnement e-commerce agressive et des angles marketing clés pour vendre le produit suivant : '{mot_espion}'."
-                st.info(outils.appeler_groq(prompt_audit))
-    with tab5:
-        st.header("👑 Laboratoire de R&D : Outils Avancés Élite")
-        if st.session_state.forfait != "Élite":
-            st.markdown("<div style='background-color: #241442; padding: 25px; border-radius: 12px; border: 2px solid #8a2be2; text-align: center;'><h3>🔒 ACCÈS ÉLITE SUPRÊME IMPÉRATIF</h3><p>Le Créateur d'Objets Digitaux, le Réplicateur Légal et l'Agent Conversationnel nécessitent un surclassement de licence.</p></div>", unsafe_allow_html=True)
-        else:
-            st.success("🔓 Protocoles Élite en ligne. Accès intégral débloqué.")
-            sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🕵️‍♂️ 1. Inspirateur & Réplicateur Légal", "💬 2. Injecteur de Chatbot IA", "💡 3. Générateur de Produits Digitaux"])
-            
-            with sub_tab1:
-                st.subheader("🛠️ Réplication Légale de Tendance Concurrentielle")
-                st.markdown("_Analyse le texte brut d'un concurrent via Scrape.do et utilise l'IA pour rebâtir un catalogue Markdown propre, 100% légal et optimisé._")
-                url_espionne = st.text_input("URL de la boutique concurrente à analyser :", "https://boutique-concurrente.com")
-                nouveau_nom_clone = st.text_input("Nom de votre enseigne dérivée :", "Cyber Clone")
-                email_clone = st.text_input("Courriel pour l'encaissement de ce clone :")
-                
-                if st.button("⚡ Lancer la réécriture industrielle") and url_espionne and nouveau_nom_clone and email_clone:
-                    st.session_state.credits_restants -= 1
-                    with st.spinner("📡 Extraction du texte visible via Scrape.do..."):
-                        texte_brut_site = outils.executer_scraping_real(url_espionne)
-                    with st.spinner("🤖 Génération de l'alternative e-commerce légale..."):
-                        prompt_legal = f"En te basant sur ces éléments textuels extraits d'un site e-commerce : {texte_brut_site}. Crée un catalogue de 4 produits alternatifs originaux et parfaitement formatés sous la structure '### 📦 [Nom du Produit]' avec un prix réaliste."
-                        catalogue_propre = outils.appeler_groq(prompt_legal, temperature=0.4)
-                    if outils.ajouter_boutique(nouveau_nom_clone, "Réplication Légale Élite", catalogue_propre, 39.99, couleur=email_clone):
-                        st.toast("🚀 Boutique dérivée configurée !", icon="⚡")
-                        st.rerun()
-            
-            with sub_tab2:
-                st.
