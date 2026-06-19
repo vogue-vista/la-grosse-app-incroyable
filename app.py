@@ -464,4 +464,5 @@ else:
             
             with sub_tab1:
                 st.subheader("🛠️ Réplication Légale de Tendance Concurrentielle")
-                url_espionne = st.text_input("URL de la boutique concurrente à analyser :", "https://boutique-
+                url_espionne = st.text_input("URL de la boutique concurrente à analyser :", "https://boutique-concurrente.com")
+
