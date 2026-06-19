@@ -3,67 +3,29 @@ import streamlit as st
 import requests
 from groq import Groq
 
-# Extraction sécurisée des clés d'API dans Streamlit Cloud
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
 def obtenir_connexion():
     """Gère l'accès simultané à SQLite pour éviter les plantages 'database is locked'"""
-    return sqlite3.connect("empire_v2.db", timeout=10)
+    return sqlite3.connect("empire_v2.db", timeout=20, check_same_thread=False)
 
 def initialiser_base_de_donnees():
     conn = obtenir_connexion()
     cursor = conn.cursor()
-    
-    # Table des boutiques (Stockage du contenu Markdown/HTML propre)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nom TEXT UNIQUE,
-            niche TEXT,
-            contenu TEXT,
-            couleur TEXT,
-            prix REAL DEFAULT 0.0
+            id INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT UNIQUE, niche TEXT, contenu TEXT, couleur TEXT, prix REAL DEFAULT 0.0
         )
     """)
-    
-    # Table des abonnés récurrents (Pour le module Rente Réelle)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS abonnements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nom_plateforme TEXT,
-            nom_client TEXT,
-            email_client TEXT,
-            tarif REAL,
-            statut TEXT DEFAULT 'Actif',
-            date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP
+            id INTEGER PRIMARY KEY AUTOINCREMENT, nom_plateforme TEXT, nom_client TEXT, email_client TEXT, tarif REAL, statut TEXT DEFAULT 'Actif', date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # Table des statistiques
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS statistiques (
-            cle TEXT PRIMARY KEY,
-            valeur REAL
-        )
-    """)
-    
-    # Table des notifications
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            texte TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    # Table des codes de sécurité anti-triche
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS codes_utilises (
-            code TEXT PRIMARY KEY
-        )
-    """)
-    
+    cursor.execute("CREATE TABLE IF NOT EXISTS statistiques (cle TEXT PRIMARY KEY, valeur REAL)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, texte TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS codes_utilises (code TEXT PRIMARY KEY)")
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
@@ -97,7 +59,7 @@ def appeler_groq(prompt, temperature=0.7):
         )
         return completion.choices[0].message.content
     except Exception as e:
-        st.error(f"⚠️ Le moteur d'IA est surchargé. Réessayez dans quelques secondes. (Erreur : {e})")
+        st.error(f"⚠️ Le moteur d'IA est surchargé. Réessayez. (Erreur : {e})")
         st.stop()
 
 def executer_scraping_real(cible_url):
@@ -106,14 +68,13 @@ def executer_scraping_real(cible_url):
         url_api = f"https://scrape.do{SCRAPE_DO_KEY}&url={url_propre}"
         response = requests.get(url_api, timeout=12)
         if response.status_code == 200:
-            # Extraction purement textuelle basique pour éviter d'envoyer trop de code HTML lourd à l'IA
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(response.text, "html.parser")
             for script in soup(["script", "style"]):
                 script.decompose()
             return soup.get_text(separator=" ")[:2000]
         else:
-            return "Contenu indisponible ou site protégé."
+            return f"Contenu indisponible (Code : {response.status_code})"
     except Exception as e:
         return f"Erreur de connexion aux serveurs de scraping : {e}"
 
@@ -122,7 +83,7 @@ def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO boutiques (nom, niche, contenu, couleur, prix) VALUES (?, ?, ?, ?, ?)", (nom, niche, contenu, couleur, prix))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Infrastructure en ligne : '{nom}' a été déployé avec succès !",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Infrastructure en ligne : '{nom}' a été déployé !",))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -135,7 +96,7 @@ def enregistrer_abonnement(nom_plateforme, nom_client, email_client, tarif):
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO abonnements (nom_plateforme, nom_client, email_client, tarif) VALUES (?, ?, ?, ?)", (nom_plateforme, nom_client, email_client, tarif))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💎 Nouvel abonnement récurrent de {tarif}$ reçu sur {nom_plateforme} ! ({nom_client})",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💎 Nouvel abonnement récurrent de {tarif}$ reçu sur {nom_plateforme} !",))
         conn.commit()
     finally:
         conn.close()
@@ -153,10 +114,10 @@ def supprimer_boutique(nom_boutique):
     cursor = conn.cursor()
     try:
         cursor.execute("DELETE FROM boutiques WHERE nom = ?", (nom_boutique,))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🗑️ La boutique '{nom_boutique}' a été effacée des serveurs.",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🗑️ La boutique '{nom_boutique}' a été effacée.",))
         conn.commit()
         return True
-    except Exception as e:
+    except:
         return False
     finally:
         conn.close()
@@ -188,7 +149,7 @@ def enregistrer_vente(nom_boutique, montant):
     conn = obtenir_connexion()
     cursor = conn.cursor()
     cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (montant,))
-    cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Encaissé : Un client a validé un panier de {montant}$ sur {nom_boutique} !",))
+    cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Encaissé : Panier de {montant}$ validé sur {nom_boutique} !",))
     conn.commit()
     conn.close()
 
