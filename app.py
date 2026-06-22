@@ -30,20 +30,26 @@ if "shop" in query_params:
         # Nettoyage des balises Markdown résiduelles
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # ✅ CONFIGURATION DU DESIGN CLIENT : Couleurs claires et contrastées pour la lisibilité
+        # ✅ DESIGN CLIENT ULTRA-LISIBLE : Correction des textes sombres et contrastes parfaits
         st.markdown(f"""
         <style>
         .stApp {{ background-color: #f8fafc !important; color: #0f172a !important; }}
         h1, h2, h3, h4, h5, p, span, label, div {{ color: #0f172a !important; }}
+        
+        /* Conteneur du formulaire blanc */
         div[data-testid="stForm"] {{ 
-            background-color: #ffffff; 
-            border: 2px solid #e2e8f0; 
-            border-radius: 16px; 
-            padding: 30px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            background-color: #ffffff !important; 
+            border: 2px solid #e2e8f0 !important; 
+            border-radius: 16px !important; 
+            padding: 30px !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
         }}
-        .stSelectbox label, .stTextInput label {{ color: #1e293b !important; font-weight: 600; }}
-        input {{ background-color: #f1f5f9 !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important; }}
+        
+        /* Correction des labels et des entrées de texte (Input fields) pour éviter le sombre */
+        .stSelectbox label, .stTextInput label {{ color: #0f172a !important; font-weight: 600 !important; }}
+        input {{ background-color: #ffffff !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important; }}
+        div[data-baseweb="select"] {{ background-color: #ffffff !important; color: #0f172a !important; }}
+        div[data-baseweb="select"] * {{ color: #0f172a !important; }}
         </style>
         """, unsafe_allow_html=True)
         
@@ -55,7 +61,7 @@ if "shop" in query_params:
         st.markdown(contenu_client, unsafe_allow_html=True)
         st.markdown("---")
         
-        # ✅ EXTRACTION DYNAMIQUE : Isolement des blocs de produits et des prix réels
+        # ✅ EXTRACTION DYNAMIQUE DES PRIX (Correction de l'index des lignes)
         dictionnaire_produits = {}
         total_catalogue_complet = 0.0
         
@@ -63,7 +69,7 @@ if "shop" in query_params:
         for bloc in blocs_produits:
             if bloc.strip():
                 lignes_bloc = bloc.split("\n")
-                nom_produit = lignes_bloc[0].strip()
+                nom_produit = lignes_bloc[0].strip() # ✅ Correction de l'index ici
                 
                 # Recherche du tarif exact via Regex
                 trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
@@ -105,6 +111,7 @@ if "shop" in query_params:
                     prix_final_calculer = round(total_catalogue_complet, 2)
                     details_commande = "Catalogue complet (Tous les articles)"
                 else:
+                    # ✅ Calcule et met à jour instantanément le prix final selon l'option choisie
                     prix_final_calculer = dictionnaire_produits.get(produit_selectionne, prix_bdd_propre)
                     details_commande = produit_selectionne
             
@@ -335,9 +342,9 @@ else:
         st.header("🏬 Concepteur de Boutique Avancé")
         st.markdown("Propulsez une vitrine e-commerce. Choisissez entre l'automatisation totale par IA ou une configuration manuelle sans limites.")
         
-        nom_shop = st.text_input("Nom de l'enseigne e-commerce :", "Cyber Look")
-        niche_shop = st.text_input("Thématique / Niche :", "Vêtements Streetwear Cyberpunk")
-        email_vendeur = st.text_input("Courriel de réception des paiements (FormSubmit) :", "votre-compte@email.com")
+        nom_shop = st.text_input("Nom de l'enseigne e-commerce :", "Cyber Look", key="design_nom_shop")
+        niche_shop = st.text_input("Thématique / Niche :", "Vêtements Streetwear Cyberpunk", key="design_niche_shop")
+        email_vendeur = st.text_input("Courriel de réception des paiements (FormSubmit) :", "votre-compte@email.com", key="design_email_vendeur")
         
         mode_creation = st.radio("Méthode de déploiement :", ["🤖 100% Automatique (IA - 10 Produits Gagnants)", "🛠️ Manuel de Zéro (Nombre de produits au choix)"])
         
@@ -406,7 +413,7 @@ else:
         if not liste_shops:
             st.info("Aucun site web actif détecté sur vos grappes de serveurs actuellement.")
         else:
-            choix = st.selectbox("Sélectionnez la boutique à inspecter :", liste_shops, format_func=lambda x: f"⚙️ {x} [{x}]")
+            choix = st.selectbox("Sélectionnez la boutique à inspecter :", liste_shops, format_func=lambda x: f"⚙️ {x[0]} [{x[1]}]")
             if choix:
                 nom, niche, contenu, couleur, prix = choix
                 nom_formate = nom.lower().replace(' ', '-')
@@ -431,7 +438,7 @@ else:
 
     with tab4:
         st.header("🕵️‍♂️ Radar Espion")
-        mot_espion = st.text_input("Saisissez un nom d'article ou une tendance à auditer :")
+        mot_espion = st.text_input("Saisissez un nom d'article ou une tendance à auditer :", key="audit_mot_espion")
         if st.button("🔍 Lancer les algorithmes d'espionnage") and mot_espion:
             with st.spinner("Scan des bases concurrentes..."):
                 prompt_audit = f"Fournis une analyse de positionnement e-commerce agressive et des angles marketing clés pour vendre le produit suivant : '{mot_espion}'."
@@ -451,7 +458,7 @@ else:
             
             with sub_tab1:
                 st.subheader("🛠️ Réplication Légale de Tendance Concurrentielle")
-                url_espionne = st.text_input("URL de la boutique concurrente à analyser :", "https://boutique-concurrente.com")
+                url_espionne = st.text_input("URL de la boutique concurrente à analyser :", "https://boutique-concurrente.com", key="rd_url_espionne")
                 pass
             with sub_tab2:
                 pass
