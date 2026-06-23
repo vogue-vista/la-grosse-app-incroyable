@@ -108,7 +108,7 @@ if "shop" in query_params:
             total_commande = 0.0
             st.markdown("<div class='bloc-panier'>", unsafe_allow_html=True)
             for idx_p, item in enumerate(st.session_state.panier_client):
-                col_item1, col_item2 = st.columns([4, 1])
+                col_item1, col_item2 = st.columns()
                 with col_item1:
                     st.write(f"🔹 **{item['nom']}** — {item['prix']} $")
                 with col_item2:
@@ -176,7 +176,7 @@ if "shop" in query_params:
                 
                 prompt_assistant = f"""Tu es l'assistant commercial virtuel attitré de la boutique en ligne '{nom}'.
                 Voici le catalogue de nos produits disponibles :
-                {contents_client if 'contents_client' in locals() else contenu_client}
+                {contenu_client}
                 
                 Réponds au client de manière chaleureuse, professionnelle et concise pour l'inciter à acheter.
                 Question du client : {question_client}"""
@@ -315,7 +315,7 @@ else:
                     
                     email_final = emails if emails else f"direction@{url}"
                     tel_final = telephones if telephones else f"514-555-01{idx}9"
-                    nom_entreprise = url.split('.').upper()
+                    nom_entreprise = url.split('.')[0].upper()
                     
                     liste_leads_extraits.append({"nom": nom_entreprise, "url": url, "email": email_final, "tel": tel_final})
             
@@ -379,7 +379,7 @@ else:
                             structure_demandee += f"\n- Produit : {p['nom']} | Prix : {p['prix']} $\n"
                             
                         prompt_catalogue = f"""Tu es un copywriter e-commerce de génie. Rédige les fiches descriptives pour la boutique '{nom_shop}' ({niche_shop}).
-                        Tu dois obligatoirement include ces {int(nombre_de_produits)} produits spécifiques avec leurs prix exacts :
+                        Tu dois obligatoirement inclure ces {int(nombre_de_produits)} produits spécifiques avec leurs prix exacts :
                         {structure_demandee}
                         
                         Génère le rendu au format Markdown en utilisant STRICTEMENT cette mise en page pour chaque produit :
@@ -389,7 +389,7 @@ else:
                         * **Prix** : [Insérer ici le prix exact spécifié] $
                         
                         N'écris rien d'autre. Pas d'introduction, pas de conclusion."""
-                        prix_stockage = liste_parametres_produits[0]["prix"] if liste_parametres_produits else 29.99
+                        prix_stockage = liste_parametres_produits["prix"] if liste_parametres_produits else 29.99
                     
                     catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.7)
                     if outils.ajouter_boutique(nom_shop, niche_shop, catalogue_markdown, prix_stockage, couleur="#f8fafc"):
@@ -412,7 +412,10 @@ else:
                 lien_public = f"/?shop={nom_formate}"
                 contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
-                st.markdown(f"🔗 **Lien hypertexte de votre boutique :** [Visiter la page publique de l'application]({lien_public})")
+                # ✅ LIEN BOUTON PERMANENT ET ULTRA-VISIBLE POUR LE ROUTAGE PUBLIC
+                st.link_button(f"🌍 Ouvrir la page publique de : {nom.upper()}", url=lien_public, type="primary")
+                st.markdown("---")
+                
                 st.markdown("### 📥 Boîte de Réception des Commandes Clients")
                 commandes_recues = outils.recuperer_commandes_boutique(nom)
                 
@@ -486,9 +489,9 @@ else:
                         if "🤖 Agent Actif" not in contenu_s:
                             nouveau_contenu_ia = contenu_s + "\n\n🤖 Agent Actif"
                             outils.mettre_a_jour_boutique(nom_s, nouveau_contenu_ia)
-                            st.success(f"🎉 Le Chatbot IA a été injecté avec succès ! Ouvrez la page publique de '{nom_s}' pour lui parler.")
+                            st.success(f"🎉 Le Chatbot IA a été injecté avec succès !")
                         else:
-                            st.info("L'Agent IA est déjà actif et opérationnel sur cette boutique.")
+                            st.info("L'Agent IA est déjà actif sur cette boutique.")
                 
             with sub_tab3:
                 st.subheader("💡 Concepteur de Produits Numériques Élite")
@@ -534,27 +537,39 @@ else:
             """, unsafe_allow_html=True)
         else:
             st.subheader("🚀 Forger une Application Clone (Générateur de Rente)")
-            st.markdown("Créez instantanément une page publique d'abonnement pour vendre des sous-accès.")
+            st.markdown("Créez instantanément une page publique d'abonnement pour vendre votre propre application en marque blanche.")
             
             nom_logiciel_vente = st.text_input("Nom de l'application logicielle à vendre :", "SaaS Automate Pro")
             tarif_SaaS = st.number_input("Prix de l'abonnement mensuel ($) :", min_value=10.0, value=100.0, step=10.0)
             
             if st.button("💎 Déployer la Page de Vente Logicielle"):
                 import random
-                code_genere_auto = f"STARTER-AUTO-{random.randint(10000, 99999)}"
+                cle_auto = f"STARTER-AUTO-{random.randint(10000, 99999)}"
                 texte_boutique_SaaS = f"""
                 # 🚀 Bienvenue sur {nom_logiciel_vente}
                 ### Accédez instantanément à votre infrastructure de Business Automatique.
-                * **Inclus** : Scanneur de leads B2B, Concepteur de boutiques IA, Radar Espion.
-                * **Facturation** : Récurrente et automatique.
+                * **Outils inclus** : Scanneur de leads B2B, Concepteur de boutiques IA, Radar Espion.
+                * **Facturation** : Récurrente sans engagement.
                 
-                ### 🔓 VOTRE CLÉ D'ACTIVATION LOGICIELLE SERA DÉLIVRÉE APRÈS SÉCURISATION DU PANIER :
+                ### 📦 Forfait : Accès Mensuel Immédiat
+                Remplissez vos informations ci-dessous pour sécuriser votre clé d'accès.
                 Prix : {tarif_SaaS} $
                 
-                *Note : Une fois le bouton d'achat validé ci-dessous, votre clé d'accès unique apparaîtra dans votre espace.*
+                ### 🔓 VOTRE CLÉ LOGICIELLE UNIQUE : {cle_auto}
+                *(Copiez ce code et collez-le dans votre panneau de contrôle pour ouvrir votre session).*
                 """
-                if outils.ajouter_boutique(nom_logiciel_vente, "Abonnement Logiciel SaaS", texte_boutique_SaaS, tarif_SaaS, couleur="#e2e8f0"):
-                    st.success(f"🎉 Application de Rente déployée ! Vos clients peuvent s'abonner pour ouvrir leur propre app.")
+                outils.ajouter_boutique(nom_logiciel_vente, "Abonnement Logiciel SaaS", texte_boutique_SaaS, tarif_SaaS, couleur="#f8fafc")
+                st.success("🎉 Page de vente configurée !")
+            
+            # ✅ LIENS D'ACCÈS PERMANENTS GENERES DANS L'ONGLET 7
+            st.markdown("---")
+            st.subheader("🔗 Liens d'accès à vos pages de vente actives")
+            
+            for s_saas in liste_shops:
+                # Filtrage pour cibler l'index 0 du tuple (le nom de l'application de rente)
+                if "SaaS" in s_saas or "Abonnement" in s_saas:
+                    nom_saas_propre = s_saas.lower().replace(' ', '-')
+                    st.link_button(f"🌍 Ouvrir la page d'abonnement : {s_saas.upper()}", url=f"/?shop={nom_saas_propre}")
             
             st.markdown("---")
             st.subheader("📊 Liste des Licences Logicielles Actives")
@@ -564,5 +579,4 @@ else:
             else:
                 for abonn in abonnements_actifs:
                     plateforme, client, note, tarif, statut, date_ins = abonn
-                    import random
-                    st.write(f"🔑 **{client}** a acheté `{plateforme}` ➔ **{tarif} $ / mois** | Clé générée : `STARTER-A-{random.randint(1000,9999)}` (Actif)")
+                    st.write(f"🔑 **{client}** a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
