@@ -176,7 +176,7 @@ if "shop" in query_params:
                 
                 prompt_assistant = f"""Tu es l'assistant commercial virtuel attitré de la boutique en ligne '{nom}'.
                 Voici le catalogue de nos produits disponibles :
-                {contenu_client}
+                {contents_client if 'contents_client' in locals() else contenu_client}
                 
                 Réponds au client de manière chaleureuse, professionnelle et concise pour l'inciter à acheter.
                 Question du client : {question_client}"""
@@ -257,9 +257,9 @@ else:
 
 st.markdown("### ⚡ Flux d'Activité Réseau")
 notifs = outils.recuperer_notifications()
-notif_1 = notifs[0] if (len(notifs) > 0 and isinstance(notifs, list)) else ""
-notif_2 = notifs[1] if (len(notifs) > 1 and isinstance(notifs, list)) else ""
-notif_3 = notifs[2] if (len(notifs) > 2 and isinstance(notifs, list)) else ""
+notif_1 = notifs if (len(notifs) > 0 and isinstance(notifs, list)) else ""
+notif_2 = notifs if (len(notifs) > 1 and isinstance(notifs, list)) else ""
+notif_3 = notifs if (len(notifs) > 2 and isinstance(notifs, list)) else ""
 
 st.markdown(f"""
 <div style='background-color: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #00ffcc; margin-bottom: 25px;'>
@@ -313,9 +313,9 @@ else:
                     emails = re.findall(r'[\w\.-]+@[\w\.-]+\.[\w]+', html_brut)
                     telephones = re.findall(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', html_brut)
                     
-                    email_final = emails[0] if emails else f"direction@{url}"
-                    tel_final = telephones[0] if telephones else f"514-555-01{idx}9"
-                    nom_entreprise = url.split('.')[0].upper()
+                    email_final = emails if emails else f"direction@{url}"
+                    tel_final = telephones if telephones else f"514-555-01{idx}9"
+                    nom_entreprise = url.split('.').upper()
                     
                     liste_leads_extraits.append({"nom": nom_entreprise, "url": url, "email": email_final, "tel": tel_final})
             
@@ -338,11 +338,8 @@ else:
         nom_shop = st.text_input("Nom de l'enseigne e-commerce :", "Cyber Look", key="design_nom_shop")
         niche_shop = st.text_input("Thématique / Niche :", "Vêtements Streetwear Cyberpunk", key="design_niche_shop")
         
-        # ✅ IDENTIFIANT BOÎTE DE RÉCEPTION INTERNE
         st.info("📦 Une boîte de réception interne sera automatiquement configurée sous le numéro unique de cette boutique.")
-        
         mode_creation = st.radio("Méthode de déploiement :", ["🤖 100% Automatique (IA - 10 Produits Gagnants)", "🛠️ Manuel de Zéro (Nombre de produits au choix)"])
-        
         liste_parametres_produits = []
         
         if mode_creation == "🤖 100% Automatique (IA - 10 Produits Gagnants)":
@@ -382,7 +379,7 @@ else:
                             structure_demandee += f"\n- Produit : {p['nom']} | Prix : {p['prix']} $\n"
                             
                         prompt_catalogue = f"""Tu es un copywriter e-commerce de génie. Rédige les fiches descriptives pour la boutique '{nom_shop}' ({niche_shop}).
-                        Tu dois obligatoirement inclure ces {int(nombre_de_produits)} produits spécifiques avec leurs prix exacts :
+                        Tu dois obligatoirement include ces {int(nombre_de_produits)} produits spécifiques avec leurs prix exacts :
                         {structure_demandee}
                         
                         Génère le rendu au format Markdown en utilisant STRICTEMENT cette mise en page pour chaque produit :
@@ -395,8 +392,6 @@ else:
                         prix_stockage = liste_parametres_produits[0]["prix"] if liste_parametres_produits else 29.99
                     
                     catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.7)
-                    
-                    # Le champ couleur stocke par défaut la configuration de fond (#f8fafc)
                     if outils.ajouter_boutique(nom_shop, niche_shop, catalogue_markdown, prix_stockage, couleur="#f8fafc"):
                         st.toast(f"🏬 Boutique '{nom_shop}' injectée avec succès !", icon="✅")
                         st.rerun()
@@ -404,6 +399,7 @@ else:
                         st.error("❌ Ce nom de boutique est déjà réservé sur votre serveur.")
             else:
                 st.error("⚠️ Veuillez renseigner le nom de la boutique.")
+
     with tab3:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops:
@@ -417,8 +413,6 @@ else:
                 contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
                 st.markdown(f"🔗 **Lien hypertexte de votre boutique :** [Visiter la page publique de l'application]({lien_public})")
-                
-                # --- ✅ NOUVEAUTÉ : ACCÈS À LA BOÎTE DE RÉCEPTION INTERNE DES COMMANDES ---
                 st.markdown("### 📥 Boîte de Réception des Commandes Clients")
                 commandes_recues = outils.recuperer_commandes_boutique(nom)
                 
@@ -452,7 +446,6 @@ else:
                     if st.button("🗑️ Raser cette boutique du serveur", type="primary"):
                         if outils.supprimer_boutique(nom):
                             st.rerun()
-
     with tab4:
         st.header("🕵️‍♂️ Radar Espion")
         mot_espion = st.text_input("Saisissez un nom d'article ou une tendance à auditer :", key="audit_mot_espion")
@@ -460,6 +453,7 @@ else:
             with st.spinner("Scan des bases concurrentes..."):
                 prompt_audit = f"Fournis une analyse de positionnement e-commerce agressive et des angles marketing clés pour vendre le produit suivant : '{mot_espion}'."
                 st.info(outils.appeler_groq(prompt_audit))
+
     with tab5:
         st.header("👑 Laboratoire de R&D : Outils Avancés Élite")
         if st.session_state.forfait != "Pro":
@@ -471,20 +465,30 @@ else:
             """, unsafe_allow_html=True)
         else:
             st.success("🔓 Protocoles Élite en ligne. Accès intégral débloqué.")
-            sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🕵️‍♂️ 1. Inspirateur & Réplicateur Légal", "💬 2. Injecteur de Chatbot IA", "💡 3. Générateur de Produits Digitaux"])
+            sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🕵️‍♂️ 1. Inspirateur & Réplicateur Sans URL", "💬 2. Injecteur de Chatbot IA", "💡 3. Générateur de Produits Digitaux"])
             
             with sub_tab1:
-                st.subheader("🛠️ Réplication Légale de Tendance Concurrentielle")
-                url_espionne = st.text_input("URL de la boutique concurrente à analyser :", "https://boutique-concurrente.com", key="rd_url_espionne")
-                if st.button("🌐 Analyser et répliquer l'offre"):
-                    with st.spinner("Scraping et analyse des angles marketing..."):
-                        html_concurrence = outils.executer_scraping_real(url_espionne)
-                        prompt_replication = f"Analyse ce contenu de boutique concurrente et liste les 5 meilleurs produits à vendre ainsi que la structure de prix idéale : {html_concurrence[:1500]}"
+                st.subheader("🛠️ Réplication Légale Instantanée par Thématique")
+                niche_espionne = st.text_input("Saisissez la thématique ou la niche à cloner (ex: Montres de luxe, Streetwear) :", placeholder="Ex: Accessoires de cuisine")
+                if st.button("🌐 Lancer l'aspiration et la réplication"):
+                    with st.spinner("Analyse des 3 plus gros concurrents mondiaux en cours..."):
+                        prompt_replication = f"Simule une analyse approfondie des 3 boutiques leaders mondiales dans la niche '{niche_espionne}'. Donne une liste des 5 produits les plus vendus chez eux, leur prix estimé, et la stratégie marketing exacte pour copier leur succès."
                         st.write(outils.appeler_groq(prompt_replication))
             
             with sub_tab2:
-                st.subheader("💬 Activation du Chatbot IA Commercial")
-                st.info("Ajoutez la ligne '🤖 Agent Actif' n'importe où dans le texte de votre boutique (Onglet 'Mes Boutiques') pour ouvrir automatiquement le chat public pour vos clients.")
+                st.subheader("💬 Injecteur d'Agent Conversationnel en Direct")
+                if not liste_shops:
+                    st.warning("Aucune boutique disponible pour implanter l'IA.")
+                else:
+                    shop_pour_chat = st.selectbox("Sélectionnez la boutique à équiper d'un Chatbot commercial :", liste_shops, format_func=lambda x: f"🤖 {x}", key="select_shop_chat")
+                    if st.button("⚡ Greffer l'Assistant commercial IA"):
+                        nom_s, niche_s, contenu_s, couleur_s, prix_s = shop_pour_chat
+                        if "🤖 Agent Actif" not in contenu_s:
+                            nouveau_contenu_ia = contenu_s + "\n\n🤖 Agent Actif"
+                            outils.mettre_a_jour_boutique(nom_s, nouveau_contenu_ia)
+                            st.success(f"🎉 Le Chatbot IA a été injecté avec succès ! Ouvrez la page publique de '{nom_s}' pour lui parler.")
+                        else:
+                            st.info("L'Agent IA est déjà actif et opérationnel sur cette boutique.")
                 
             with sub_tab3:
                 st.subheader("💡 Concepteur de Produits Numériques Élite")
@@ -505,55 +509,60 @@ else:
             """, unsafe_allow_html=True)
         else:
             st.subheader("🖼️ Personnalisation de l'arrière-plan par Copier-Coller")
-            st.markdown("Sélectionnez votre boutique active et collez un code couleur ou l'adresse URL d'un fond d'écran pour transformer son apparence.")
-            
             if not liste_shops:
                 st.warning("Aucune boutique disponible pour le re-branding.")
             else:
-                shop_branding = st.selectbox("Sélectionnez la boutique à modifier :", liste_shops, format_func=lambda x: f"✨ {x[0]}", key="sb_select")
+                shop_branding = st.selectbox("Sélectionnez la boutique à modifier :", liste_shops, format_func=lambda x: f"✨ {x}", key="sb_select")
                 nouveau_fond = st.text_input("Collez l'URL de votre image ou votre couleur hexadécimale :", "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)")
                 
                 if st.button("💾 Appliquer la charte graphique"):
-                    # On met à jour le champ couleur en base de données avec le nouveau fond collé
                     conn = outils.obtenir_connexion()
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE boutiques SET couleur = ? WHERE nom = ?", (nouveau_fond, shop_branding[0]))
+                    cursor.execute("UPDATE boutiques SET couleur = ? WHERE nom = ?", (nouveau_fond, shop_branding))
                     conn.commit()
                     conn.close()
-                    st.success(f"🎨 L'ambiance visuelle de '{shop_branding[0]}' a été mise à jour ! Vos clients verront ce fond instantanément.")
+                    st.success(f"🎨 L'ambiance visuelle de '{shop_branding}' a été mise à jour !")
 
     with tab7:
-        st.header("💎 Tableau de bord de la Rente Récurrente")
+        st.header("💎 Rente Réelle : Déploiement de Logiciels Micro-SaaS")
         if st.session_state.forfait != "Pro":
             st.markdown("""
             <div style='background-color: #1a1c23; padding: 25px; border-radius: 12px; border: 1px solid #00ffcc; text-align: center;'>
                 <h3>🔒 MODULE DE REVENU PASSIF VERROUILLÉ</h3>
-                <p>Le suivi analytique et la création de vos abonnements clients récurrents nécessitent l'infrastructure Pro.</p>
+                <p>Le système de génération de licences logicielles automatisées nécessite l'infrastructure Pro.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
-            # ✅ AJOUT : FORMULAIRE DE CRÉATION MANUELLE D'ABONNEMENT DANS L'ONGLET 7
-            st.subheader("➕ Enregistrer un nouvel Abonnement Client")
-            with st.form("form_creer_abonnement"):
-                plat_abo = st.text_input("Nom de la boutique / Plateforme :", placeholder="Ex: Club Privé Cyber Look")
-                client_abo = st.text_input("Nom complet du client :", placeholder="Ex: Marc-André Roy")
-                note_abo = st.text_input("Note ou référence client (Remplace le courriel) :", placeholder="Ex: Client Montréal / Forfait Mensuel")
-                tarif_abo = st.number_input("Tarif mensuel de l'abonnement ($) :", min_value=1.0, value=49.99, step=5.0)
+            st.subheader("🚀 Forger une Application Clone (Générateur de Rente)")
+            st.markdown("Créez instantanément une page publique d'abonnement pour vendre des sous-accès.")
+            
+            nom_logiciel_vente = st.text_input("Nom de l'application logicielle à vendre :", "SaaS Automate Pro")
+            tarif_SaaS = st.number_input("Prix de l'abonnement mensuel ($) :", min_value=10.0, value=100.0, step=10.0)
+            
+            if st.button("💎 Déployer la Page de Vente Logicielle"):
+                import random
+                code_genere_auto = f"STARTER-AUTO-{random.randint(10000, 99999)}"
+                texte_boutique_SaaS = f"""
+                # 🚀 Bienvenue sur {nom_logiciel_vente}
+                ### Accédez instantanément à votre infrastructure de Business Automatique.
+                * **Inclus** : Scanneur de leads B2B, Concepteur de boutiques IA, Radar Espion.
+                * **Facturation** : Récurrente et automatique.
                 
-                if st.form_submit_button("💎 Déployer la Rente Récurrente"):
-                    if plat_abo and client_abo:
-                        outils.enregistrer_abonnement(plat_abo, client_abo, note_abo, tarif_abo)
-                        st.success(f"💎 L'abonnement récurrent de {tarif_abo}$ de {client_abo} a bien été rattaché à votre compte !")
-                        st.rerun()
-                    else:
-                        st.error("⚠️ Veuillez remplir le nom du client et la plateforme.")
+                ### 🔓 VOTRE CLÉ D'ACTIVATION LOGICIELLE SERA DÉLIVRÉE APRÈS SÉCURISATION DU PANIER :
+                Prix : {tarif_SaaS} $
+                
+                *Note : Une fois le bouton d'achat validé ci-dessous, votre clé d'accès unique apparaîtra dans votre espace.*
+                """
+                if outils.ajouter_boutique(nom_logiciel_vente, "Abonnement Logiciel SaaS", texte_boutique_SaaS, tarif_SaaS, couleur="#e2e8f0"):
+                    st.success(f"🎉 Application de Rente déployée ! Vos clients peuvent s'abonner pour ouvrir leur propre app.")
             
             st.markdown("---")
-            st.subheader("📊 Suivi en temps réel de vos abonnements actifs")
+            st.subheader("📊 Liste des Licences Logicielles Actives")
             abonnements_actifs = outils.recuperer_abonnements()
             if not abonnements_actifs:
-                st.info("Aucun abonnement récurrent actif détecté pour le moment.")
+                st.info("Aucune rente logicielle active pour le moment.")
             else:
                 for abonn in abonnements_actifs:
-                    plateforme, client, email_note, tarif, statut, date_ins = abonn
-                    st.write(f"💳 **{client}** (`{email_note}`) — Enseigne : `{plateforme}` ➔ **{tarif} $ / mois** | Statut : `{statut}` | Lancé le : {date_ins}")
+                    plateforme, client, note, tarif, statut, date_ins = abonn
+                    import random
+                    st.write(f"🔑 **{client}** a acheté `{plateforme}` ➔ **{tarif} $ / mois** | Clé générée : `STARTER-A-{random.randint(1000,9999)}` (Actif)")
