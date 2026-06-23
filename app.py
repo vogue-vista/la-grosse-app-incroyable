@@ -5,6 +5,10 @@ import re
 # Initialisation de la structure de données SQLite
 outils.initialiser_base_de_donnees()
 
+# Initialisation du panier virtuel global pour l'expérience client
+if "panier_client" not in st.session_state:
+    st.session_state.panier_client = []
+
 # --- 1. ROUTAGE D'URL PUBLIC POUR LES CLIENTS ---
 query_params = st.query_params
 
@@ -30,26 +34,31 @@ if "shop" in query_params:
         # Nettoyage des balises Markdown résiduelles
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # ✅ DESIGN CLIENT ULTRA-LISIBLE : Correction des textes sombres et contrastes parfaits
+        # ✅ DESIGN CLIENT APPLIQUÉ (Couleur personnalisée via Studio Branding ou standard clair)
+        fond_branding = couleur if (couleur and not "@" in couleur) else "#f8fafc"
         st.markdown(f"""
         <style>
-        .stApp {{ background-color: #f8fafc !important; color: #0f172a !important; }}
+        .stApp {{ background: {fond_branding} !important; color: #0f172a !important; }}
         h1, h2, h3, h4, h5, p, span, label, div {{ color: #0f172a !important; }}
         
-        /* Conteneur du formulaire blanc */
-        div[data-testid="stForm"] {{ 
+        /* Conteneur blanc du Formulaire et du Panier */
+        div[data-testid="stForm"], .bloc-panier {{ 
             background-color: #ffffff !important; 
             border: 2px solid #e2e8f0 !important; 
             border-radius: 16px !important; 
-            padding: 30px !important;
+            padding: 25px !important;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+            margin-bottom: 20px;
         }}
         
-        /* Correction des labels et des entrées de texte (Input fields) pour éviter le sombre */
-        .stSelectbox label, .stTextInput label {{ color: #0f172a !important; font-weight: 600 !important; }}
+        /* Boutons d'ajout au panier stylisés */
+        .stButton>button {{
+            background-color: #00ffcc !important;
+            color: #0f172a !important;
+            font-weight: bold !important;
+            border-radius: 8px !important;
+        }}
         input {{ background-color: #ffffff !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important; }}
-        div[data-baseweb="select"] {{ background-color: #ffffff !important; color: #0f172a !important; }}
-        div[data-baseweb="select"] * {{ color: #0f172a !important; }}
         </style>
         """, unsafe_allow_html=True)
         
@@ -57,111 +66,96 @@ if "shop" in query_params:
         st.subheader(f"✨ Catalogue Officiel : {niche}")
         st.markdown("---")
         
-        # Affichage du catalogue généré
-        st.markdown(contenu_client, unsafe_allow_html=True)
-        st.markdown("---")
-        
-        # ✅ EXTRACTION DYNAMIQUE DES PRIX (Correction de l'index des lignes)
-        dictionnaire_produits = {}
-        total_catalogue_complet = 0.0
-        
+        # ✅ EXTRACTION STRUCTURELLE DES PRODUITS POUR CRÉER LES BOUTONS
         blocs_produits = contenu_client.split("### 📦")
-        for bloc in blocs_produits:
+        
+        # Affichage de l'introduction si elle existe avant le premier produit
+        if blocs_produits[0].strip():
+            st.markdown(blocs_produits[0], unsafe_allow_html=True)
+            
+        for idx, bloc in enumerate(blocs_produits[1:]):
             if bloc.strip():
                 lignes_bloc = bloc.split("\n")
-                nom_produit = lignes_bloc[0].strip() # ✅ Correction de l'index ici
+                nom_produit = lignes_bloc[0].strip()
                 
-                # Recherche du tarif exact via Regex
+                # Extraction du prix pour ce produit via Regex
                 trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
                 if trouver_prix:
                     prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".")
                     try:
                         prix_chiffre = float(prix_texte)
-                        dictionnaire_produits[nom_produit] = prix_chiffre
-                        total_catalogue_complet += prix_chiffre
                     except ValueError:
-                        dictionnaire_produits[nom_produit] = prix_bdd_propre
+                        prix_chiffre = prix_bdd_propre
                 else:
-                    dictionnaire_produits[nom_produit] = prix_bdd_propre
-
-        if not dictionnaire_produits:
-            dictionnaire_produits["Formule Unique d'Abonnement / Produit Spécial"] = prix_bdd_propre
-            total_catalogue_complet = prix_bdd_propre
-
-        est_un_abonnement = "Abonnement" in niche
-        
-        if est_un_abonnement:
-            st.markdown("### 💎 Activer votre Abonnement Privé en 1-Clic")
-        else:
-            st.markdown("### 🛒 Passer commande en 1-Clic")
-            
-        with st.form("achat_client_form"):
-            if est_un_abonnement:
-                produit_selectionne = list(dictionnaire_produits.keys())[0]
-                prix_final_calculer = dictionnaire_produits[produit_selectionne]
-                st.info(f"💳 Type de forfait : {produit_selectionne} — Facturation récurrente automatique.")
-                details_commande = f"Abonnement Récurrent : {produit_selectionne}"
-            else:
-                options_achat = list(dictionnaire_produits.keys())
-                if len(options_achat) > 1:
-                    options_achat = ["🎁 Commander tout le catalogue complet"] + options_achat
-                produit_selectionne = st.selectbox("🛍️ Sélectionnez votre article :", options=options_achat)
+                    prix_chiffre = prix_bdd_propre
                 
-                if produit_selectionne == "🎁 Commander tout le catalogue complet":
-                    prix_final_calculer = round(total_catalogue_complet, 2)
-                    details_commande = "Catalogue complet (Tous les articles)"
-                else:
-                    # ✅ Calcule et met à jour instantanément le prix final selon l'option choisie
-                    prix_final_calculer = dictionnaire_produits.get(produit_selectionne, prix_bdd_propre)
-                    details_commande = produit_selectionne
+                # Rendu visuel propre du produit sur la page publique
+                st.markdown(f"### 📦 {bloc}", unsafe_allow_html=True)
+                
+                # Bouton dynamique "Ajouter au Panier" exclusif pour chaque article
+                if st.button(f"🛒 Ajouter : {nom_produit}", key=f"btn_ajout_{idx}"):
+                    st.session_state.panier_client.append({"nom": nom_produit, "prix": prix_chiffre})
+                    st.toast(f"✅ {nom_produit} a été ajouté au panier !", icon="🛒")
+        st.markdown("---")
+        
+        # --- EN-TÊTE DU PANIER DE COMMANDE ---
+        st.markdown("## 🛒 Votre Panier d'Achat")
+        
+        if not st.session_state.panier_client:
+            st.info("Votre panier est vide actuellement. Cliquez sur 'Ajouter' pour sélectionner des articles.")
+            total_commande = 0.0
+        else:
+            total_commande = 0.0
+            st.markdown("<div class='bloc-panier'>", unsafe_allow_html=True)
+            for idx_p, item in enumerate(st.session_state.panier_client):
+                col_item1, col_item2 = st.columns([4, 1])
+                with col_item1:
+                    st.write(f"🔹 **{item['nom']}** — {item['prix']} $")
+                with col_item2:
+                    if st.button("❌ Retirer", key=f"del_item_{idx_p}"):
+                        st.session_state.panier_client.pop(idx_p)
+                        st.rerun()
+                total_commande += item['prix']
             
-            nom_client = st.text_input("Nom complet de facturation :", placeholder="Ex: Jean Tremblay")
-            email_client = st.text_input("Adresse Courriel :", placeholder="Ex: jean.tremblay@email.com")
-            
-            if est_un_abonnement:
-                adresse_client = "Accès Numérique Instantané"
-                texte_bouton = f"⚡ Confirmer mon Adhésion ({prix_final_calculer} $ / mois)"
-            else:
-                adresse_client = st.text_input("Adresse de livraison résidentielle :", placeholder="Ex: 123 rue des Lilas, Montréal, QC")
-                texte_bouton = f"🔥 Confirmer mon achat ({prix_final_calculer} $)"
-            
-            bouton_clique = st.form_submit_button(texte_bouton)
-            
-            if bouton_clique:
-                if nom_client and email_client and adresse_client:
-                    if est_un_abonnement:
-                        outils.enregistrer_abonnement(nom, nom_client, email_client, prix_final_calculer)
-                        outils.enregistrer_vente(nom, prix_final_calculer)
-                    else:
-                        outils.enregistrer_vente(nom, prix_final_calculer)
+            st.markdown(f"### 💵 Total à payer : {round(total_commande, 2)} $")
+            if st.button("🧹 Vider le panier"):
+                st.session_state.panier_client = []
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # --- FORMULAIRE D'ACHAT ULTRA-SIMPLIFIÉ (SANS COURRIEL) ---
+        if st.session_state.panier_client:
+            st.markdown("### ⚡ Finaliser ma Commande en 1-Clic")
+            with st.form("achat_client_form"):
+                nom_client = st.text_input("Nom complet de facturation :", placeholder="Ex: Jean Tremblay")
+                adresse_client = st.text_input("Adresse complète de livraison :", placeholder="Ex: 123 rue des Lilas, Montréal, QC")
+                
+                texte_bouton = f"🔥 Valider et Payer ({round(total_commande, 2)} $)"
+                bouton_clique = st.form_submit_button(texte_bouton)
+                
+                if bouton_clique:
+                    if nom_client and adresse_client:
+                        # Regroupement textuel des articles du panier
+                        liste_articles = [i['nom'] for i in st.session_state.panier_client]
+                        details_articles_texte = ", ".join(liste_articles)
                         
-                    st.balloons()
-                    
-                    email_vendeur_cible = couleur if (couleur and "@" in couleur) else "notifications-empire@example.com"
-                    nom_formate = nom.lower().replace(" ", "-")
-                    url_retour = f"https://streamlit.app{nom_formate}"
-                    
-                    # Passerelle sécurisée FormSubmit.co corrigée avec le slash '/'
-                    html_soumission_directe = f"""
-                    <form id="redirect_form" action="https://formsubmit.co{email_vendeur_cible}" method="POST">
-                        <input type="hidden" name="Boutique_Provenance" value="{nom}">
-                        <input type="hidden" name="Type_Offre" value="{niche}">
-                        <input type="hidden" name="Produit_Achete" value="{details_commande}">
-                        <input type="hidden" name="Montant_Encaisse" value="{prix_final_calculer} $">
-                        <input type="hidden" name="Nom_Acheteur" value="{nom_client}">
-                        <input type="hidden" name="Email_Acheteur" value="{email_client}">
-                        <input type="hidden" name="Destination_Livraison" value="{adresse_client}">
-                        <input type="hidden" name="_subject" value="🚨 NOUVELLE TRANSACTION EMPIRE - {nom}">
-                        <input type="hidden" name="_next" value="{url_retour}">
-                        <input type="hidden" name="_captcha" value="false">
-                    </form>
-                    <script>document.getElementById('redirect_form').submit();</script>
-                    """
-                    st.components.v1.html(html_soumission_directe, height=0, width=0)
-                    st.success(f"🎉 Paiement sécurisé validé ! Redirection finale vers votre espace...")
-                else:
-                    st.error("⚠️ Erreur : Veuillez remplir l'intégralité des champs du formulaire.")
-                    
+                        # Stockage direct dans la boîte de réception interne de l'application
+                        outils.enregistrer_commande_interne(
+                            nom_boutique=nom,
+                            nom_client=nom_client,
+                            adresse=adresse_client,
+                            commande=details_articles_texte,
+                            total=round(total_commande, 2)
+                        )
+                        
+                        # Réinitialisation du panier après succès
+                        st.session_state.panier_client = []
+                        st.balloons()
+                        st.success("🎉 Votre commande a été enregistrée avec succès dans notre système !")
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Erreur : Veuillez remplir votre nom et votre adresse de livraison.")
+                        
         # --- DISCUSSION INTERACTIVE CLIENT AVEC L'ASSISTANT IA ---
         if "🤖 Agent Actif" in contenu:
             st.markdown("---")
@@ -181,7 +175,7 @@ if "shop" in query_params:
                 st.session_state.historique_chat_public.append({"role": "user", "content": question_client})
                 
                 prompt_assistant = f"""Tu es l'assistant commercial virtuel attitré de la boutique en ligne '{nom}'.
-                Voici le catalogue complet de nos produits disponibles :
+                Voici le catalogue de nos produits disponibles :
                 {contenu_client}
                 
                 Réponds au client de manière chaleureuse, professionnelle et concise pour l'inciter à acheter.
@@ -198,7 +192,6 @@ if "shop" in query_params:
 # --- 2. CONFIGURATION DE SESSION ADMINISTRATEUR ---
 if "compte_actif" not in st.session_state: st.session_state.compte_actif = False
 if "forfait" not in st.session_state: st.session_state.forfait = "Aucun"
-if "rente_debloquee" not in st.session_state: st.session_state.rente_debloquee = False
 # --- 3. BARRE LATÉRALE ET SYSTÈME DE SÉCURITÉ DES FORFAITS ---
 st.sidebar.title("🎮 Centre de Contrôle")
 st.sidebar.markdown("---")
@@ -238,7 +231,7 @@ def valider_code_acces():
     elif code != "":
         st.sidebar.error("❌ Signature ou clé d'authentification invalide.")
 
-st.sidebar.text_input("Clé d'activation (Licence Mensuelle)", type="password", key="cle_authentification", on_change=valider_code_acces)
+st.sidebar.text_input("Clé d'activation (Licence Mensuelle)", type="password", key="cle_authentification", on_change=valider_code_access)
 st.sidebar.markdown("---")
 mode_affichage = st.sidebar.selectbox("Finition cosmétique :", ["Standard (Épuré)", "Jeux Vidéo (RPG)", "Custom (👑)"])
 
@@ -344,7 +337,9 @@ else:
         
         nom_shop = st.text_input("Nom de l'enseigne e-commerce :", "Cyber Look", key="design_nom_shop")
         niche_shop = st.text_input("Thématique / Niche :", "Vêtements Streetwear Cyberpunk", key="design_niche_shop")
-        email_vendeur = st.text_input("Courriel de réception des paiements (FormSubmit) :", "votre-compte@email.com", key="design_email_vendeur")
+        
+        # ✅ IDENTIFIANT BOÎTE DE RÉCEPTION INTERNE
+        st.info("📦 Une boîte de réception interne sera automatiquement configurée sous le numéro unique de cette boutique.")
         
         mode_creation = st.radio("Méthode de déploiement :", ["🤖 100% Automatique (IA - 10 Produits Gagnants)", "🛠️ Manuel de Zéro (Nombre de produits au choix)"])
         
@@ -367,7 +362,7 @@ else:
                 liste_parametres_produits.append({"nom": nom_p, "prix": prix_p})
 
         if st.button("🚀 Forger l'infrastructure de la boutique"):
-            if nom_shop and email_vendeur:
+            if nom_shop:
                 with st.spinner("L'IA génère et structure votre catalogue commercial..."):
                     if mode_creation == "🤖 100% Automatique (IA - 10 Produits Gagnants)":
                         prompt_catalogue = f"""Tu es un expert en e-commerce et un copywriter de génie.
@@ -401,13 +396,14 @@ else:
                     
                     catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.7)
                     
-                    if outils.ajouter_boutique(nom_shop, niche_shop, catalogue_markdown, prix_stockage, couleur=email_vendeur):
+                    # Le champ couleur stocke par défaut la configuration de fond (#f8fafc)
+                    if outils.ajouter_boutique(nom_shop, niche_shop, catalogue_markdown, prix_stockage, couleur="#f8fafc"):
                         st.toast(f"🏬 Boutique '{nom_shop}' injectée avec succès !", icon="✅")
                         st.rerun()
                     else:
                         st.error("❌ Ce nom de boutique est déjà réservé sur votre serveur.")
             else:
-                st.error("⚠️ Veuillez renseigner le nom de la boutique et votre courriel d'encaissement.")
+                st.error("⚠️ Veuillez renseigner le nom de la boutique.")
     with tab3:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops:
@@ -421,14 +417,35 @@ else:
                 contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
                 st.markdown(f"🔗 **Lien hypertexte de votre boutique :** [Visiter la page publique de l'application]({lien_public})")
-                st.markdown(f"### 🏬 SYSTEM FEED : {nom.upper()}")
+                
+                # --- ✅ NOUVEAUTÉ : ACCÈS À LA BOÎTE DE RÉCEPTION INTERNE DES COMMANDES ---
+                st.markdown("### 📥 Boîte de Réception des Commandes Clients")
+                commandes_recues = outils.recuperer_commandes_boutique(nom)
+                
+                if not commandes_recues:
+                    st.info("📨 Aucun message ni commande reçu pour le moment dans cette boîte.")
+                else:
+                    for cmd in commandes_recues:
+                        c_nom, c_adresse, c_articles, c_total, c_date = cmd
+                        st.markdown(f"""
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 4px solid #00ffcc; margin-bottom: 10px;'>
+                            <span style='font-size: 11px; color: #94a3b8;'>📅 Reçu le : {c_date}</span><br>
+                            👤 <b>Client :</b> {c_nom} <br>
+                            📍 <b>Adresse de livraison :</b> {c_adresse} <br>
+                            📦 <b>Commande :</b> {c_articles} <br>
+                            💰 <b>Total Encaissé :</b> {c_total} $
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                st.markdown("---")
+                st.markdown(f"### 🏬 SYSTEM FEED EN DIRECT : {nom.upper()}")
                 st.markdown(contenu_propre, unsafe_allow_html=True)
                 st.markdown("---")
                 
                 c_act1, c_act2 = st.columns(2)
                 with c_act1:
                     if st.button("🛒 Injecter une vente artificielle"):
-                        outils.enregistrer_vente(nom, prix)
+                        outils.enregistrer_commande_interne(nom, "Acheteur Virtuel", "Adresse Test", "Article Aléatoire", prix)
                         st.balloons()
                         st.rerun()
                 with c_act2:
@@ -459,11 +476,23 @@ else:
             with sub_tab1:
                 st.subheader("🛠️ Réplication Légale de Tendance Concurrentielle")
                 url_espionne = st.text_input("URL de la boutique concurrente à analyser :", "https://boutique-concurrente.com", key="rd_url_espionne")
-                pass
+                if st.button("🌐 Analyser et répliquer l'offre"):
+                    with st.spinner("Scraping et analyse des angles marketing..."):
+                        html_concurrence = outils.executer_scraping_real(url_espionne)
+                        prompt_replication = f"Analyse ce contenu de boutique concurrente et liste les 5 meilleurs produits à vendre ainsi que la structure de prix idéale : {html_concurrence[:1500]}"
+                        st.write(outils.appeler_groq(prompt_replication))
+            
             with sub_tab2:
-                pass
+                st.subheader("💬 Activation du Chatbot IA Commercial")
+                st.info("Ajoutez la ligne '🤖 Agent Actif' n'importe où dans le texte de votre boutique (Onglet 'Mes Boutiques') pour ouvrir automatiquement le chat public pour vos clients.")
+                
             with sub_tab3:
-                pass
+                st.subheader("💡 Concepteur de Produits Numériques Élite")
+                theme_num = st.text_input("Sujet de la formation ou du livre numérique :", "Devenir Libre avec l'IA en 30 jours")
+                if st.button("📚 Rédiger la structure par IA"):
+                    with st.spinner("Création du produit digital..."):
+                        prompt_num = f"Rédige le plan d'action détaillé et l'introduction d'un guide haut de gamme sur le thème : {theme_num}"
+                        st.markdown(outils.appeler_groq(prompt_num))
 
     with tab6:
         st.header("🎨 Studio Branding & Identité Visuelle")
@@ -475,7 +504,23 @@ else:
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.info("Le studio visuel est synchronisé avec vos serveurs d'images.")
+            st.subheader("🖼️ Personnalisation de l'arrière-plan par Copier-Coller")
+            st.markdown("Sélectionnez votre boutique active et collez un code couleur ou l'adresse URL d'un fond d'écran pour transformer son apparence.")
+            
+            if not liste_shops:
+                st.warning("Aucune boutique disponible pour le re-branding.")
+            else:
+                shop_branding = st.selectbox("Sélectionnez la boutique à modifier :", liste_shops, format_func=lambda x: f"✨ {x[0]}", key="sb_select")
+                nouveau_fond = st.text_input("Collez l'URL de votre image ou votre couleur hexadécimale :", "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)")
+                
+                if st.button("💾 Appliquer la charte graphique"):
+                    # On met à jour le champ couleur en base de données avec le nouveau fond collé
+                    conn = outils.obtenir_connexion()
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE boutiques SET couleur = ? WHERE nom = ?", (nouveau_fond, shop_branding[0]))
+                    conn.commit()
+                    conn.close()
+                    st.success(f"🎨 L'ambiance visuelle de '{shop_branding[0]}' a été mise à jour ! Vos clients verront ce fond instantanément.")
 
     with tab7:
         st.header("💎 Tableau de bord de la Rente Récurrente")
@@ -483,15 +528,32 @@ else:
             st.markdown("""
             <div style='background-color: #1a1c23; padding: 25px; border-radius: 12px; border: 1px solid #00ffcc; text-align: center;'>
                 <h3>🔒 MODULE DE REVENU PASSIF VERROUILLÉ</h3>
-                <p>Le suivi analytique de vos abonnements clients récurrents nécessite l'infrastructure Pro.</p>
+                <p>Le suivi analytique et la création de vos abonnements clients récurrents nécessitent l'infrastructure Pro.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.markdown("Suivi en temps réel de vos abonnements clients actifs.")
+            # ✅ AJOUT : FORMULAIRE DE CRÉATION MANUELLE D'ABONNEMENT DANS L'ONGLET 7
+            st.subheader("➕ Enregistrer un nouvel Abonnement Client")
+            with st.form("form_creer_abonnement"):
+                plat_abo = st.text_input("Nom de la boutique / Plateforme :", placeholder="Ex: Club Privé Cyber Look")
+                client_abo = st.text_input("Nom complet du client :", placeholder="Ex: Marc-André Roy")
+                note_abo = st.text_input("Note ou référence client (Remplace le courriel) :", placeholder="Ex: Client Montréal / Forfait Mensuel")
+                tarif_abo = st.number_input("Tarif mensuel de l'abonnement ($) :", min_value=1.0, value=49.99, step=5.0)
+                
+                if st.form_submit_button("💎 Déployer la Rente Récurrente"):
+                    if plat_abo and client_abo:
+                        outils.enregistrer_abonnement(plat_abo, client_abo, note_abo, tarif_abo)
+                        st.success(f"💎 L'abonnement récurrent de {tarif_abo}$ de {client_abo} a bien été rattaché à votre compte !")
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Veuillez remplir le nom du client et la plateforme.")
+            
+            st.markdown("---")
+            st.subheader("📊 Suivi en temps réel de vos abonnements actifs")
             abonnements_actifs = outils.recuperer_abonnements()
             if not abonnements_actifs:
-                st.info("Aucun abonnement récurrent actif pour le moment.")
+                st.info("Aucun abonnement récurrent actif détecté pour le moment.")
             else:
                 for abonn in abonnements_actifs:
-                    plateforme, client, email, tarif, statut, date_ins = abonn
-                    st.write(f"💳 **{client}** ({email}) — `{plateforme}` : **{tarif} $ / mois** | Statut : `{statut}`")
+                    plateforme, client, email_note, tarif, statut, date_ins = abonn
+                    st.write(f"💳 **{client}** (`{email_note}`) — Enseigne : `{plateforme}` ➔ **{tarif} $ / mois** | Statut : `{statut}` | Lancé le : {date_ins}")
