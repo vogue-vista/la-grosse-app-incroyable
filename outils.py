@@ -7,7 +7,7 @@ GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
 def obtenir_connexion():
-    """Gère l'accès simultané à SQLite pour éviter les plantages 'database is locked'"""
+    """Gère l'accès simultané à SQLite pour éviter les plantages"""
     return sqlite3.connect("empire_v2.db", timeout=20, check_same_thread=False)
 
 def initialiser_base_de_donnees():
@@ -24,6 +24,14 @@ def initialiser_base_de_donnees():
         )
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS statistiques (cle TEXT PRIMARY KEY, valeur REAL)")
+    
+    # ✅ NOUVELLE STRUCTURE : Table des messages clients reçus dans la boîte de réception interne
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS boite_reception (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, nom_boutique TEXT, nom_client TEXT, adresse TEXT, commande TEXT, total REAL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
     cursor.execute("CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, texte TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
     cursor.execute("CREATE TABLE IF NOT EXISTS codes_utilises (code TEXT PRIMARY KEY)")
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
@@ -59,7 +67,7 @@ def appeler_groq(prompt, temperature=0.7):
         )
         return completion.choices[0].message.content
     except Exception as e:
-        st.error(f"⚠️ Le moteur d'IA est surchargé. Réessayez. (Erreur : {e})")
+        st.error(f"⚠️ Le moteur d'IA est surchargé. (Erreur : {e})")
         st.stop()
 
 def executer_scraping_real(cible_url):
@@ -90,6 +98,32 @@ def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
         return False
     finally:
         conn.close()
+
+# ✅ NOUVELLE FONCTION : Enregistrer une commande dans la boîte de réception interne de l'application
+def enregistrer_commande_interne(nom_boutique, nom_client, adresse, commande, total):
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO boite_reception (nom_boutique, nom_client, adresse, commande, total) 
+            VALUES (?, ?, ?, ?, ?)
+        """, (nom_boutique, nom_client, adresse, commande, total))
+        
+        # Mettre à jour le chiffre d'affaires
+        cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (total,))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Encaissé : Panier de {total}$ validé sur {nom_boutique} !",))
+        conn.commit()
+    finally:
+        conn.close()
+
+# ✅ NOUVELLE FONCTION : Récupérer les messages et commandes d'une boutique spécifique
+def recuperer_commandes_boutique(nom_boutique):
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    cursor.execute("SELECT nom_client, adresse, commande, total, timestamp FROM boite_reception WHERE nom_boutique = ? ORDER BY id DESC", (nom_boutique,))
+    res = cursor.fetchall()
+    conn.close()
+    return res
 
 def enregistrer_abonnement(nom_plateforme, nom_client, email_client, tarif):
     conn = obtenir_connexion()
@@ -144,14 +178,6 @@ def recuperer_ca_total():
     res = cursor.fetchone()
     conn.close()
     return res[0] if res else 0.0
-
-def enregistrer_vente(nom_boutique, montant):
-    conn = obtenir_connexion()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (montant,))
-    cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Encaissé : Panier de {montant}$ validé sur {nom_boutique} !",))
-    conn.commit()
-    conn.close()
 
 def recuperer_notifications():
     conn = obtenir_connexion()
