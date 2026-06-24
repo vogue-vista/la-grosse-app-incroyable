@@ -3,7 +3,7 @@ import outils
 import re
 import random
 
-# Initialisation automatique de la structure de données SQLite locale
+# Initialisation automatique de l'infrastructure de la base SQLite locale
 outils.initialiser_base_de_donnees()
 
 # Initialisation du panier virtuel isolé pour l'expérience d'achat client
@@ -41,6 +41,7 @@ if "shop" in query_params:
         .stApp {{ background: {fond_branding} !important; color: #0f172a !important; }}
         h1, h2, h3, h4, h5, p, span, label, div {{ color: #0f172a !important; }}
         
+        /* Conteneur épuré du Panier et du Formulaire */
         div[data-testid="stForm"], .bloc-panier {{ 
             background-color: #ffffff !important; 
             border: 2px solid #e2e8f0 !important; 
@@ -50,6 +51,7 @@ if "shop" in query_params:
             margin-bottom: 20px;
         }}
         
+        /* Boutons d'ajout au panier stylisés */
         .stButton>button {{
             background-color: #00ffcc !important;
             color: #0f172a !important;
@@ -68,7 +70,7 @@ if "shop" in query_params:
         if "### 📦" in contenu_client:
             blocs_produits = contenu_client.split("### 📦")
             if blocs_produits[1:]:
-                st.markdown(blocs_produits[0], unsafe_allow_html=True)
+                st.markdown(blocs_produits, unsafe_allow_html=True)
                 
             for idx, bloc in enumerate(blocs_produits[1:]):
                 if bloc.strip():
@@ -91,7 +93,7 @@ if "shop" in query_params:
                         st.session_state.panier_client.append({"nom": nom_produit, "prix": prix_chiffre, "vendeur": nom})
                         st.toast(f"✅ {nom_produit} a été ajouté au panier !", icon="🛒")
         else:
-            st.markdown(contenu_client)
+            st.markdown(contents_client if 'contents_client' in locals() else contenu_client)
 
         st.markdown("---")
         st.markdown("## 🛒 Votre Panier d'Achat")
@@ -142,95 +144,15 @@ if "shop" in query_params:
                     else:
                         st.error("⚠️ Erreur : Veuillez remplir votre nom et votre adresse de livraison.")
         st.stop()
-# --- 1.1 EXPÉRIENCE ACCUEIL GÉNÉRAL : LA PLACE DE MARCHÉ MULTI-VENDEURS ---
-# S'exécute uniquement si aucun lien de boutique n'est appelé par l'URL
-if not st.session_state.get("compte_actif", False):
-    st.title("🛍️ LE GRAND MARCHÉ ÉQUITABLE INTERAC")
-    st.subheader("La place de marché collective qui propulse les jeunes entrepreneurs")
-    
+
+# --- 2. CONFIGURATION DE SESSION ADMINISTRATEUR ---
+if "compte_actif" not in st.session_state: st.session_state.compte_actif = False
+if "forfait" not in st.session_state: st.session_state.forfait = "Aucun"
+
+# 🔥 BLOC SÉCURITÉ PARENTALE ET TRANSPARENCE AVANT AUTHENTIFICATION
+if not st.session_state.compte_actif:
     st.markdown("""
-    <div style='background-color: #1e293b; padding: 15px; border-radius: 12px; border-left: 5px solid #00ffcc; margin-bottom: 25px;'>
-        <span style='color: #00ffcc; font-weight: bold;'>🎲 REBATTEUR DE CARTES ANTI-MONOPOLE</span><br>
-        <span style='font-size: 13px; color: #cbd5e1;'>
-        Notre algorithme interne mélange aléatoirement l'ordre d'affichage de toutes les vitrines à chaque rafraîchissement. Les vétérans et les nouveaux ont exactement la même visibilité !
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    toutes_les_boutiques = outils.recuperer_boutiques()
-    
-    if not toutes_les_boutiques:
-        st.info("📉 Le marché commun est vide. Créez la première boutique de l'infrastructure !")
-    else:
-        recherche_client = st.text_input("🔍 Rechercher un article spécifique sur tout le réseau (Ex: Chaise, Hoodie) :", "").strip().lower()
-        
-        # Algorithme de distribution équitable : Mélange aléatoire total des boutiques en vitrine
-        random.shuffle(toutes_les_boutiques)
-        liste_articles_extraits = []
-        
-        for b_idx, b_data in enumerate(toutes_les_boutiques):
-            b_nom, b_niche, b_contenu, b_couleur, b_prix = b_data
-            try: b_prix_propre = float(b_prix)
-            except: b_prix_propre = 29.99
-                
-            b_contenu_propre = b_contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
-            
-            if "### 📦" in b_contenu_propre:
-                blocs = b_contenu_propre.split("### 📦")
-                for p_idx, bloc in enumerate(blocs[1:]):
-                    if bloc.strip():
-                        nom_produit = bloc.split("\n")[0].strip()
-                        if recherche_client and (recherche_client not in nom_produit.lower() and recherche_client not in bloc.lower()):
-                            continue
-                            
-                        liste_articles_extraits.append({
-                            "vendeur": b_nom, "niche": b_niche, "bloc_texte": bloc, "nom_produit": nom_produit, "prix": b_prix_propre, "b_idx": b_idx, "p_idx": p_idx
-                        })
-
-        # Deuxième couche anti-monopole : On mélange l'ordre des produits extraits
-        random.shuffle(liste_articles_extraits)
-        
-        if not liste_articles_extraits:
-            st.warning("Aucun produit ne correspond à vos critères de recherche.")
-        else:
-            for art in liste_articles_extraits:
-                st.markdown(f"""
-                <div style='background-color: #111827; padding: 12px; border-radius: 12px; border: 1px solid #1f2937; margin-bottom: -10px;'>
-                    <span style='color: #00ffcc; font-size: 11px; font-weight: bold;'>🏬 Boutique : {art['vendeur'].upper()} ({art['niche']})</span>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown(f"### 📦 {art['bloc_texte']}", unsafe_allow_html=True)
-                
-                if st.button(f"🛒 Ajouter au panier global : {art['nom_produit']}", key=f"global_market_{art['b_idx']}_{art['p_idx']}"):
-                    st.session_state.panier_client.append({"nom": art['nom_produit'], "prix": art['prix'], "vendeur": art['vendeur']})
-                    st.toast(f"✅ {art['nom_produit']} ajouté au panier commun !", icon="🛒")
-                st.markdown("<br>", unsafe_allow_html=True)
-
-    # --- LE FORUM DE DISCUSSION DE L'EMPIRE ---
-    st.markdown("---")
-    st.header("💬 Le Forum Public de l'Empire")
-    with st.form("form_forum_global"):
-        pseudo_forum = st.text_input("Votre Pseudo :", value="Entrepreneur_Débutant", max_chars=20)
-        msg_forum = st.text_area("Partager une info, une technique, ou faire une annonce :", max_chars=250)
-        if st.form_submit_button("🚀 Publier sur le Réseau"):
-            if msg_forum.strip():
-                outils.ajouter_message_forum(pseudo_forum, msg_forum)
-                st.success("Message injecté dans le flux !")
-                st.rerun()
-
-    discussions = outils.recuperer_messages_forum()
-    for disc in discussions[:15]:
-        auteur, message, date_post = disc
-        st.markdown(f"""
-        <div style='background-color: #1e293b; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #6366f1;'>
-            <span style='color: #818cf8; font-size: 11px;'>📅 {date_post} | 👤 <b>{auteur}</b> :</span><br>
-            <span style='color: #e2e8f0; font-size: 13px;'>{message}</span>
-        </div>
-        """, unsafe_allow_html=True)
-# --- 1.2 BLOC SÉCURITÉ PARENTALE ET TRANSPARENCE AVANT AUTHENTIFICATION ---
-if not st.session_state.get("compte_actif", False):
-    st.markdown("""
-    <div style='background-color: #111827; padding: 20px; border-radius: 12px; border: 1px solid #1f2937; text-align: center; margin-top: 30px; margin-bottom: 20px;'>
+    <div style='background-color: #111827; padding: 20px; border-radius: 12px; border: 1px solid #1f2937; text-align: center; margin-bottom: 20px;'>
         <h4 style='color: #00ffcc; margin: 0;'>💡 PROTOCOLE CENTRAL D'ACTIVATION</h4>
         <p style='color: #9ca3af; font-size: 14px; margin: 5px 0 0 0;'>« L'application te donne les armes, mais c'est toi qui choisis la guerre. »</p>
     </div>
@@ -240,14 +162,13 @@ if not st.session_state.get("compte_actif", False):
         <span style='font-size: 13px; color: #cbd5e1; line-height: 1.6;'>
         Bonjour aux parents. Cette application n'est pas gérée par une multinationale américaine comme Shopify ou Amazon, mais par un <b>développeur indépendant et local</b>. Et c'est votre meilleure garantie de sécurité :<br><br>
         • <b>Zéro Donnée Sensible</b> : Contrairement aux géants du web qui stockent des millions de cartes de crédit et de mots de passe (et qui se font pirater), notre application ne collecte <b>absolument rien</b>. Pas de carte bancaire, pas de mot de passe, pas de compte connecté. Un hacker ne peut pas voler ce qui n'existe pas.<br>
-        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient votre enfant par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel sert uniquement de panneau d'affichage textuel pour afficher l'adresse de livraison.<br>
+        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient votre enfant par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel serves uniquement de panneau d'affichage textuel pour afficher l'adresse de livraison.<br>
         • <b>Soutien Direct</b> : Pas de robot d'assistance à l'autre bout du monde. Vous utilisez un outil indépendant, épuré, transparent et conçu pour initier les jeunes aux affaires de manière sécuritaire et responsable.<br>
         • <b>Garantie d'Essai Gratuit</b> : Votre enfant peut utiliser un code d'accès temporaire pour valider le système sans que vous n'ayez à débourser un seul dollar.
         </span>
     </div>
     """, unsafe_allow_html=True)
-
-# --- 2. GESTION DES FORFAITS ET BARRE LATÉRALE DE SÉCURITÉ ---
+# --- 3. GESTION DES FORFAITS ET BARRE LATÉRALE DE SÉCURITÉ ---
 st.sidebar.title("🎮 Centre de Contrôle")
 st.sidebar.markdown("---")
 
@@ -293,96 +214,130 @@ mode_affichage = st.sidebar.selectbox("Finition cosmétique :", ["Standard (Épu
 grade = "👑 MEMBRE EMPIRE PRO" if st.session_state.forfait == "Pro" else ("⚔️ MARCHAND STARTER" if st.session_state.forfait == "Starter" else "🥚 INVITÉ SANS LICENCE")
 st.sidebar.markdown(f"**Rang de Session :** `{grade}`")
 
-# --- 3. RENDU DES THÈMES DE L'INTERFACE ADMIN ---
+# --- 4. TRAITEMENT DES SKELETONS VISUELS ---
 if mode_affichage == "Standard (Épuré)":
     st.markdown("<style>.stApp { background-color: #0f172a !important; color: #f8fafc !important; } h1, h2, h3, h4, h5, p, span, label { color: #f8fafc !important; } div[data-testid='stMetric'] { background-color: #1e293b; border-radius: 12px; padding: 15px; border: 1px solid #334155; }</style>", unsafe_allow_html=True)
-    if st.session_state.compte_actif: st.title("🚀 Business Automatique Dashboard")
+    st.title("🚀 Business Automatique Dashboard")
 elif mode_affichage == "Jeux Vidéo (RPG)":
     st.markdown("<style>.stApp { background-color: #090a0f !important; color: #a2a8b6 !important; } h1 { color: #00ffcc !important; text-shadow: 0 0 12px #00ffcc; text-align: center; } div[data-testid='stMetric'] { background-color: #141923; border: 2px solid #00ffcc; border-radius: 12px; padding: 15px; }</style>", unsafe_allow_html=True)
-    if st.session_state.compte_actif: st.title("🕹️ EMPIRE TYCOON : CORE MODULE")
+    st.title("🕹️ EMPIRE TYCOON : CORE MODULE")
 else:
     if st.session_state.forfait != "Pro":
         st.sidebar.warning("🔒 Option Custom réservée exclusivement aux grades Pro.")
         st.markdown("<style>.stApp { background-color: #0f172a !important; }</style>", unsafe_allow_html=True)
-        if st.session_state.compte_actif: st.title("🚀 Business Automatique Dashboard")
+        st.title("🚀 Business Automatique Dashboard")
     else:
         couleur_custom = st.sidebar.color_picker("Ajuster l'éclairage Néon :", "#00FFCC")
         st.markdown(f"<style>.stApp {{ background-color: #080808 !important; color: #ffffff !important; }} h1 {{ color: {couleur_custom} !important; text-shadow: 0 0 20px {couleur_custom}; text-align: center; }} </style>", unsafe_allow_html=True)
-        if st.session_state.compte_actif: st.title("👑 MODULE VIP INTERACTIF")
-if st.session_state.compte_actif:
-    st.markdown("### ⚡ Flux d'Activité Réseau")
-    notifs = outils.recuperer_notifications()
-    notif_1 = notifs[0] if (len(notifs) > 0 and isinstance(notifs, list)) else ""
-    notif_2 = notifs[1] if (len(notifs) > 1 and isinstance(notifs, list)) else ""
-    notif_3 = notifs[2] if (len(notifs) > 2 and isinstance(notifs, list)) else ""
+        st.title("👑 MODULE VIP INTERACTIF")
+st.markdown("### ⚡ Flux d'Activité Réseau")
+notifs = outils.recuperer_notifications()
+notif_1 = notifs[0] if (len(notifs) > 0 and isinstance(notifs, list)) else ""
+notif_2 = notifs[1] if (len(notifs) > 1 and isinstance(notifs, list)) else ""
+notif_3 = notifs[2] if (len(notifs) > 2 and isinstance(notifs, list)) else ""
 
-    st.markdown(f"""
-    <div style='background-color: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #00ffcc; margin-bottom: 25px;'>
-        <span style='font-size:13px; color:#cbd5e1;'>• {notif_1}</span><br>
-        <span style='font-size:13px; color:#cbd5e1;'>• {notif_2}</span><br>
-        <span style='font-size:13px; color:#cbd5e1;'>• {notif_3}</span>
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown(f"""
+<div style='background-color: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #00ffcc; margin-bottom: 25px;'>
+    <span style='font-size:13px; color:#cbd5e1;'>• {notif_1}</span><br>
+    <span style='font-size:13px; color:#cbd5e1;'>• {notif_2}</span><br>
+    <span style='font-size:13px; color:#cbd5e1;'>• {notif_3}</span>
+</div>
+""", unsafe_allow_html=True)
 
-    st.markdown("### 📊 Statistiques de l'Infrastructure")
-    col1, col2, col3 = st.columns(3)
-    liste_shops = outils.recuperer_boutiques()
-    ca_total_reel = outils.recuperer_ca_total()
+st.markdown("### 📊 Statistiques de l'Infrastructure")
+col1, col2, col3 = st.columns(3)
+liste_shops = outils.recuperer_boutiques()
+ca_total_reel = outils.recuperer_ca_total()
 
-    col1.metric(label="💰 Chiffre d'Affaires Global", value=f"{ca_total_reel} $")
-    col2.metric(label="🏬 Boutiques Déployées", value=f"{len(liste_shops)} Sites")
-    col3.metric(label="⚡ Licence Active", value=f"Plan {st.session_state.forfait}")
+col1.metric(label="💰 Chiffre d'Affaires Global", value=f"{ca_total_reel} $")
+col2.metric(label="🏬 Boutiques Déployées", value=f"{len(liste_shops)} Sites")
+col3.metric(label="⚡ Licence Active", value=f"Plan {st.session_state.forfait}" if st.session_state.compte_actif else "Aucune")
 
-    st.markdown("---")
+st.markdown("---")
 
+if not st.session_state.compte_actif:
+    st.warning("⚠️ Terminal restreint. Veuillez insérer une clé d'activation valide pour débloquer l'accès aux modules.")
+else:
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        "🤖 B1: Radar de Tendances", "🏬 B2: Boutique Multi-Produits", "👀 Mes Boutiques", 
+        "🛍️ B1: Marché & Forum", "🏬 B2: Boutique Multi-Produits", "👀 Mes Boutiques", 
         "🕵️‍♂️ Radar Espion", "💡 B3: R&D Élite", "🎨 Studio Branding", "💎 Rente Réelle"
     ])
 
     with tab1:
-        st.header("🤖 B1: Chasseur de Produits Viraux par IA")
-        st.markdown("Notre algorithme simule un scan des tendances TikTok, Reels et Amazon pour extraire les 3 opportunités les plus rentables de la journée.")
+        st.header("🛍️ Place de Marché Collective & Solidaire")
+        st.markdown("Tous les articles créés par la communauté s'affichent ici. L'algorithme mélange l'affichage à chaque visite pour que tout le monde ait sa chance.")
         
-        st.markdown("""
-        <div style='background-color: #1e1b4b; padding: 12px; border-radius: 8px; border-left: 4px solid #6366f1; margin-bottom: 15px;'>
-            <span style='color: #a5b4fc; font-size: 13px; font-style: italic;'>« Les amateurs cherchent des produits au hasard. Les pros exploitent les failles algorithmiques. »</span>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        categorie_tendance = st.selectbox("Ciblez le radar sur une grande catégorie de marché :", [
-            "🔥 Gadgets Tech & High-Tech", 
-            "✨ Beauté, Cosmétiques & Glow-up",
-            "👟 Mode, Streetwear & Accessoires",
-            "🏠 Objets Maison, Déco & Rangement Viraux",
-            "🧸 Jouets, Niches Enfants & Gaming"
-        ])
-        
-        if st.button("📡 Lancer le Scanner d'Opportunités Élite"):
-            with st.spinner("Interconnexion avec les bases de données de tendances..."):
-                prompt_radar = f"""Tu es un analyste e-commerce de génie spécialisé dans les produits viraux TikTok et le dropshipping.
-                Génère 3 produits hautement rentables, ultra-tendances et uniques pour la catégorie '{categorie_tendance}'.
-                Pour chaque produit, utilise STRICTEMENT cette structure textuelle en évitant les fioritures :
-                
-                PRODUIT [Numéro] : [Nom du produit]
-                - 🎯 Angle Marketing : [Pourquoi ce produit cartonne sur TikTok en 1 phrase]
-                - 💰 Prix Grossiste estimé : [Entre 5$ et 20$] | Prix de Vente conseillé : [Entre 30$ et 79$]
-                - 🚀 Argument Choc : [L'accroche psychologique pour le vendre]
-                
-                Sépare les 3 produits par une ligne de tirets '---'. Écris uniquement le texte des produits."""
-                
-                resultat_radar = outils.appeler_groq(prompt_radar, temperature=0.8)
-                st.session_state.derniere_recherche_produits = resultat_radar
-                st.session_state.categorie_scanne = categorie_tendance
-                st.rerun()
-                
-        if "derniere_recherche_produits" in st.session_state:
-            st.markdown(f"### 📋 Opportunités Détectées dans : `{st.session_state.categorie_scanne}`")
-            st.write(st.session_state.derniere_recherche_produits)
+        if not liste_shops:
+            st.info("📉 Aucune boutique n'est encore active sur le réseau pour alimenter le marché.")
+        else:
+            recherche_client = st.text_input("🔍 Rechercher un produit spécifique (Ex: Chaise, Hoodie) :", "", key="recherche_tab1").strip().lower()
             
-            st.markdown("---")
-            st.subheader("⚡ Exploitation Immédiate")
-            st.info("Copiez le nom du produit qui vous intéresse le plus, allez dans l'onglet **'B2: Boutique'** pour générer automatiquement le catalogue et configurer votre mode de paiement Interac en 2 minutes !")
+            boutiques_melangees = list(liste_shops)
+            random.shuffle(boutiques_melangees)
+            liste_articles_extraits = []
+            
+            for b_idx, b_data in enumerate(boutiques_melangees):
+                b_nom, b_niche, b_contenu, b_couleur, b_prix = b_data
+                try: b_prix_propre = float(b_prix)
+                except: b_prix_propre = 29.99
+                    
+                b_contenu_propre = b_contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
+                
+                if "### 📦" in b_contenu_propre:
+                    blocs = b_contenu_propre.split("### 📦")
+                    for p_idx, bloc in enumerate(blocs[1:]):
+                        if bloc.strip():
+                            nom_produit = bloc.split("\n")[0].strip()
+                            if recherche_client and (recherche_client not in nom_produit.lower() and recherche_client not in bloc.lower()):
+                                continue
+                                
+                            liste_articles_extraits.append({
+                                "vendeur": b_nom, "niche": b_niche, "bloc_texte": bloc, "nom_produit": nom_produit, "prix": b_prix_propre, "b_idx": b_idx, "p_idx": p_idx
+                            })
+
+            random.shuffle(liste_articles_extraits)
+            
+            if not liste_articles_extraits:
+                st.warning("Aucun produit disponible ne correspond à ta recherche.")
+            else:
+                for art in liste_articles_extraits[:10]:
+                    st.markdown(f"""
+                    <div style='background-color: #111827; padding: 12px; border-radius: 12px; border: 1px solid #1f2937; margin-bottom: -10px;'>
+                        <span style='color: #00ffcc; font-size: 11px; font-weight: bold;'>🏬 Enseigne : {art['vendeur'].upper()} ({art['niche']})</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.markdown(f"### 📦 {art['bloc_texte']}", unsafe_allow_html=True)
+                    
+                    if st.button(f"🛒 Simuler un achat client : {art['nom_produit']}", key=f"sim_btn_{art['b_idx']}_{art['p_idx']}"):
+                        outils.enregistrer_commande_interne(art['vendeur'], "Acheteur du Marché", "Adresse Marché", art['nom_produit'], art['prix'])
+                        st.balloons()
+                        st.success(f"🎉 Vente simulée avec succès pour {art['vendeur']} ! La commande est envoyée dans son onglet 'Mes Boutiques'.")
+                    st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- LE FORUM DE DISCUSSION DE L'EMPIRE ---
+        st.markdown("---")
+        st.header("💬 Le Forum Privé des Entrepreneurs")
+        with st.form("form_forum_admin"):
+            pseudo_forum = st.text_input("Ton Pseudo de membre :", value=f"Membre_{st.session_state.forfait}", max_chars=20)
+            msg_forum = st.text_area("Partage une astuce de vente, négocie un produit ou demande de l'aide :", max_chars=250)
+            if st.form_submit_button("🚀 Publier sur le Forum"):
+                if msg_forum.strip():
+                    outils.ajouter_message_forum(pseudo_forum, msg_forum)
+                    st.success("Message partagé sur le forum !")
+                    st.rerun()
+
+        discussions = outils.recuperer_messages_forum()
+        if not discussions:
+            st.info("Le forum est calme. Lance la première discussion !")
+        else:
+            for disc in discussions[:10]:
+                auteur, message, date_post = disc
+                st.markdown(f"""
+                <div style='background-color: #1e293b; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #6366f1;'>
+                    <span style='color: #818cf8; font-size: 11px;'>📅 {date_post} | 👤 <b>{auteur}</b> :</span><br>
+                    <span style='color: #e2e8f0; font-size: 13px;'>{message}</span>
+                </div>
+                """, unsafe_allow_html=True)
     with tab2:
         st.header("🏬 Concepteur de Boutique Avancé")
         st.markdown("Propulsez une vitrine e-commerce. Choisissez entre l'automatisation totale par IA ou une configuration manuelle sans limites.")
@@ -417,7 +372,7 @@ if st.session_state.compte_actif:
             if nom_shop and courriel_interac_vendeur:
                 with st.spinner("L'IA génère et structure votre catalogue commercial..."):
                     
-                    prefixe_interac = f"💵 **Mode de paiement sécurisé : Virement Interac à {courriel_interac_vendeur}**\\n*Question : Boutique | Réponse : Votre Nom*\\n\\n---\\n"
+                    prefixe_interac = f"💵 **Mode de paiement sécurisé : Virement Interac à {courriel_interac_vendeur}**\n*Question : Boutique | Réponse : Votre Nom*\n\n---\n"
                     
                     if mode_creation == "🤖 100% Automatique (IA - 10 Produits Gagnants)":
                         prompt_catalogue = f"""Tu es un expert en e-commerce et un copywriter de génie.
@@ -434,7 +389,7 @@ if st.session_state.compte_actif:
                     else:
                         structure_demandee = ""
                         for p in liste_parametres_produits:
-                            structure_demandee += f"\\n- Produit : {p['nom']} | Prix : {p['prix']} $\\n"
+                            structure_demandee += f"\n- Produit : {p['nom']} | Prix : {p['prix']} $\n"
                             
                         prompt_catalogue = f"""Tu es un copywriter e-commerce de génie. Rédige les fiches descriptives pour la boutique '{nom_shop}' ({niche_shop}).
                         Tu dois obligatoirement inclure ces {int(nombre_de_produits)} produits spécifiques avec leurs prix exacts :
@@ -471,11 +426,9 @@ if st.session_state.compte_actif:
                 lien_public = f"/?shop={nom_formate}"
                 contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
-                # ✅ BOUTON RESTE ACCESSIBLE EN PERMANENCE
                 st.link_button(f"🌍 Ouvrir la page publique de : {nom.upper()}", url=lien_public, type="primary")
                 st.markdown("---")
                 
-                # ✅ INSTRUCTIONS LOGISTIQUES MANUELLES POUR LES JEUNES DROPSHIPPERS
                 st.markdown("""
                 <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 4px solid #00ffcc; margin-bottom: 15px;'>
                     <span style='color: #00ffcc; font-weight: bold;'>📋 PROTOCOLE DE LIVRAISON DROPSHIPPING :</span><br>
