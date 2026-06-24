@@ -611,3 +611,24 @@ Une fois votre commande validée dans le formulaire ci-dessous, votre clé d'act
                 for abonn in abonnements_actifs:
                     plateforme, client, note, tarif, statut, date_ins = abonn
                     st.write(f"🔑 **{client}** a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
+                    def ajouter_message_forum(auteur, message):
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO forum (auteur, message) VALUES (?, ?)", (auteur, message))
+    conn.commit()
+    conn.close()
+
+def recuperer_messages_forum():
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT auteur, message, timestamp FROM forum ORDER BY id DESC LIMIT 50")
+        res = cursor.fetchall()
+    except:
+        cursor.execute("CREATE TABLE IF NOT EXISTS forum (id INTEGER PRIMARY KEY AUTOINCREMENT, auteur TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
+        conn.commit()
+        res = []
+    finally:
+        conn.close()
+    return res
+
