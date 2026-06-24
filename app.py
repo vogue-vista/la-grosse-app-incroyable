@@ -2,10 +2,10 @@ import streamlit as st
 import outils
 import re
 
-# Initialisation automatique de l'infrastructure de la base SQLite
+# Initialisation automatique de la structure de données SQLite locale
 outils.initialiser_base_de_donnees()
 
-# Initialisation du panier virtuel isolé pour la session du client
+# Initialisation du panier virtuel isolé pour l'expérience d'achat client
 if "panier_client" not in st.session_state:
     st.session_state.panier_client = []
 
@@ -30,16 +30,17 @@ if "shop" in query_params:
         except (ValueError, TypeError):
             prix_bdd_propre = 0.0
         
-        # Nettoyage complet des balises de code résiduelles
+        # Nettoyage des balises Markdown de code résiduelles
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # DESIGN DE LA BOUTIQUE CLIENT (Couleur ou image via Studio Branding)
+        # DESIGN DE LA VITRINE CLIENT (Couleur personnalisée via Studio Branding ou standard clair)
         fond_branding = couleur if (couleur and not "@" in couleur) else "#f8fafc"
         st.markdown(f"""
         <style>
         .stApp {{ background: {fond_branding} !important; color: #0f172a !important; }}
         h1, h2, h3, h4, h5, p, span, label, div {{ color: #0f172a !important; }}
         
+        /* Conteneur épuré du Panier et du Formulaire */
         div[data-testid="stForm"], .bloc-panier {{ 
             background-color: #ffffff !important; 
             border: 2px solid #e2e8f0 !important; 
@@ -49,6 +50,7 @@ if "shop" in query_params:
             margin-bottom: 20px;
         }}
         
+        /* Boutons d'ajout au panier stylisés */
         .stButton>button {{
             background-color: #00ffcc !important;
             color: #0f172a !important;
@@ -63,8 +65,7 @@ if "shop" in query_params:
         st.title(f"🏬 {nom.upper()}")
         st.subheader(f"✨ Catalogue Officiel : {niche}")
         st.markdown("---")
-        
-        # INTERPRÉTATION GRAPHIQUE DU CONTENU (Boutique standard ou Application Micro-SaaS)
+        # INTERPRÉTATION GRAPHIQUE DU CATALOGUE (Boutique Multi-Produits ou Application Rente SaaS)
         if "### 📦" in contenu_client:
             blocs_produits = contenu_client.split("### 📦")
             if blocs_produits[0].strip():
@@ -87,25 +88,27 @@ if "shop" in query_params:
                     
                     st.markdown(f"### 📦 {bloc}", unsafe_allow_html=True)
                     
-                    if st.button(f"🛒 Ajouter au panier : {nom_produit}", key=f"btn_ajout_{idx}"):
+                    # Bouton d'ajout dynamique exclusif à chaque produit du catalogue
+                    if st.button(f"🛒 Ajouter : {nom_produit}", key=f"btn_ajout_{idx}"):
                         st.session_state.panier_client.append({"nom": nom_produit, "prix": prix_chiffre})
-                        st.toast(f"✅ {nom_produit} ajouté !", icon="🛒")
+                        st.toast(f"✅ {nom_produit} a été ajouté au panier !", icon="🛒")
         else:
-            # ✅ CORRECTIF : Si c'est l'application de Rente, affichage immédiat en Markdown ultra-pro sans code brut
+            # Rendu direct en Markdown épuré pour l'application de rente (évite le code HTML brut)
             st.markdown(contenu_client)
+
         st.markdown("---")
         
-        # --- EN-TÊTE DU PANIER DE COMMANDE ---
+        # --- EN-TÊTE DU PANIER DE COMMANDE CLIENT ---
         st.markdown("## 🛒 Votre Panier d'Achat")
         
         if not st.session_state.panier_client:
-            st.info("Votre panier est vide actuellement. Cliquez sur 'Ajouter' pour sélectionner des articles.")
+            st.info("Votre panier est vide. Cliquez sur 'Ajouter' pour sélectionner vos articles.")
             total_commande = 0.0
         else:
             total_commande = 0.0
             st.markdown("<div class='bloc-panier'>", unsafe_allow_html=True)
             for idx_p, item in enumerate(st.session_state.panier_client):
-                col_item1, col_item2 = st.columns([4, 1])
+                col_item1, col_item2 = st.columns(2)
                 with col_item1:
                     st.write(f"🔹 **{item['nom']}** — {item['prix']} $")
                 with col_item2:
@@ -119,15 +122,14 @@ if "shop" in query_params:
                 st.session_state.panier_client = []
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
-
-        # --- FORMULAIRE D'ACHAT ULTRA-SIMPLIFIÉ (SANS COURRIEL) ---
+        # --- FORMULAIRE D'ACHAT ULTRA-SIMPLIFIÉ SANS INTERFACE STRIPE ---
         if st.session_state.panier_client:
             st.markdown("### ⚡ Finaliser ma Commande en 1-Clic")
             with st.form("achat_client_form"):
                 nom_client = st.text_input("Nom complet de facturation :", placeholder="Ex: Jean Tremblay")
                 adresse_client = st.text_input("Adresse complète de livraison :", placeholder="Ex: 123 rue des Lilas, Montréal, QC")
                 
-                texte_bouton = f"🔥 Valider et Payer ({round(total_commande, 2)} $)"
+                texte_bouton = f"🔥 Valider et Payer par Interac ({round(total_commande, 2)} $)"
                 bouton_clique = st.form_submit_button(texte_bouton)
                 
                 if bouton_clique:
@@ -135,6 +137,7 @@ if "shop" in query_params:
                         liste_articles = [i['nom'] for i in st.session_state.panier_client]
                         details_articles_texte = ", ".join(liste_articles)
                         
+                        # Routage et stockage dans la boîte interne sécurisée de la BDD
                         outils.enregistrer_commande_interne(
                             nom_boutique=nom,
                             nom_client=nom_client,
@@ -145,15 +148,15 @@ if "shop" in query_params:
                         
                         st.session_state.panier_client = []
                         st.balloons()
-                        st.success("🎉 Votre commande a été enregistrée avec succès dans notre système !")
+                        st.success("🎉 Votre commande a été enregistrée ! Suivez les instructions Interac affichées en haut pour valider l'envoi du colis.")
                         st.rerun()
                     else:
                         st.error("⚠️ Erreur : Veuillez remplir votre nom et votre adresse de livraison.")
                         
-        # --- DISCUSSION INTERACTIVE CLIENT AVEC L'ASSISTANT IA ---
+        # --- FILTRE SAV ET DISCUSSION INTERACTIVE CLIENT AVEC L'ASSISTANT IA ---
         if "🤖 Agent Actif" in contenu:
             st.markdown("---")
-            st.markdown("### 💬 Une question ? Discutez avec notre Assistant IA en direct")
+            st.markdown("### 💬 Une question ou un problème de livraison ? Assistance en direct")
             
             if "historique_chat_public" not in st.session_state:
                 st.session_state.historique_chat_public = []
@@ -162,21 +165,20 @@ if "shop" in query_params:
                 with st.chat_message(msg["role"]):
                     st.write(msg["content"])
                     
-            question_client = st.chat_input("Posez votre question sur nos produits ici...")
+            question_client = st.chat_input("Posez votre question ou signalez un bris/retard ici...")
             if question_client:
                 with st.chat_message("user"):
                     st.write(question_client)
                 st.session_state.historique_chat_public.append({"role": "user", "content": question_client})
                 
-                prompt_assistant = f"""Tu es l'assistant commercial virtuel attitré de la boutique en ligne '{nom}'.
-                Voici le catalogue de nos produits disponibles :
-                {contenu_client}
-                
-                Réponds au client de manière chaleureuse, professionnelle et concise pour l'inciter à acheter.
-                Question du client : {question_client}"""
+                prompt_assistant = f"""Tu es l'assistant commercial et SAV virtuel attitré de la boutique en ligne '{nom}'.
+                Si le client signale un produit cassé, abîmé ou en retard, demande-lui poliment son nom complet de facturation pour que l'équipe puisse valider son virement Interac et procéder à un remboursement intégral ou un renvoi sans frais.
+                Voici le catalogue : {contenu_client}
+                Réponds de manière chaleureuse, rassurante et très concise.
+                Question : {question_client}"""
                 
                 with st.chat_message("assistant"):
-                    with st.spinner("L'assistant réfléchit..."):
+                    with st.spinner("L'assistant analyse votre demande..."):
                         reponse_ia = outils.appeler_groq(prompt_assistant, temperature=0.5)
                         st.write(reponse_ia)
                 st.session_state.historique_chat_public.append({"role": "assistant", "content": reponse_ia})
@@ -187,12 +189,23 @@ if "shop" in query_params:
 if "compte_actif" not in st.session_state: st.session_state.compte_actif = False
 if "forfait" not in st.session_state: st.session_state.forfait = "Aucun"
 
-# 🔥 ACCUEIL MOTIVATION AVANT CONNEXION
+# 🔥 BLOC SÉCURITÉ PARENTALE ET TRANSPARENCE AVANT AUTHENTIFICATION
 if not st.session_state.compte_actif:
     st.markdown("""
     <div style='background-color: #111827; padding: 20px; border-radius: 12px; border: 1px solid #1f2937; text-align: center; margin-bottom: 20px;'>
         <h4 style='color: #00ffcc; margin: 0;'>💡 PROTOCOLE CENTRAL D'ACTIVATION</h4>
         <p style='color: #9ca3af; font-size: 14px; margin: 5px 0 0 0;'>« L'application te donne les armes, mais c'est toi qui choisis la guerre. »</p>
+    </div>
+    
+    <div style='background-color: #1e293b; padding: 20px; border-radius: 12px; border-left: 5px solid #3b82f6; margin-bottom: 25px;'>
+        <h5 style='color: #3b82f6; margin-top: 0;'>🛡️ SECTION SÉCURITÉ PARENTALE (Lettre ouverte du créateur)</h5>
+        <span style='font-size: 13px; color: #cbd5e1; line-height: 1.6;'>
+        Bonjour aux parents. Cette application n'est pas gérée par une multinationale américaine comme Shopify ou Amazon, mais par un <b>développeur indépendant et local</b>. Et c'est votre meilleure garantie de sécurité :<br><br>
+        • <b>Zéro Donnée Sensible</b> : Contrairement aux géants du web qui stockent des millions de cartes de crédit et de mots de passe (et qui se font pirater), notre application ne collecte <b>absolument rien</b>. Pas de carte bancaire, pas de mot de passe, pas de compte connecté. Un hacker ne peut pas voler ce qui n'existe pas.<br>
+        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient votre enfant par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel sert uniquement de panneau d'affichage textuel pour afficher l'adresse de livraison.<br>
+        • <b>Soutien Direct</b> : Pas de robot d'assistance à l'autre bout du monde. Vous utilisez un outil indépendant, épuré, transparent et conçu pour initier les jeunes aux affaires de manière sécuritaire et responsable.<br>
+        • <b>Garantie d'Essai Gratuit</b> : Votre enfant peut utiliser un code d'accès temporaire pour valider le système sans que vous n'ayez à débourser un seul dollar.
+        </span>
     </div>
     """, unsafe_allow_html=True)
 # --- 3. BARRE LATÉRALE ET SYSTÈME DE SÉCURITÉ DES FORFAITS ---
@@ -257,7 +270,6 @@ else:
         couleur_custom = st.sidebar.color_picker("Ajuster l'éclairage Néon :", "#00FFCC")
         st.markdown(f"<style>.stApp {{ background-color: #080808 !important; color: #ffffff !important; }} h1 {{ color: {couleur_custom} !important; text-shadow: 0 0 20px {couleur_custom}; text-align: center; }} </style>", unsafe_allow_html=True)
         st.title("👑 MODULE VIP INTERACTIF")
-
 st.markdown("### ⚡ Flux d'Activité Réseau")
 notifs = outils.recuperer_notifications()
 notif_1 = notifs[0] if (len(notifs) > 0 and isinstance(notifs, list)) else ""
@@ -341,6 +353,9 @@ else:
         nom_shop = st.text_input("Nom de l'enseigne e-commerce :", "Cyber Look", key="design_nom_shop")
         niche_shop = st.text_input("Thématique / Niche :", "Vêtements Streetwear Cyberpunk", key="design_niche_shop")
         
+        # Courriel Interac sans Stripe/PayPal pour les jeunes (Sécuritaire et sans données sensibles)
+        courriel_interac_vendeur = st.text_input("🚀 Votre courriel Interac (Pour recevoir l'argent de vos ventes) :", "votre-compte-banque@email.com")
+        
         st.info("📦 Une boîte de réception interne sera automatiquement configurée sous le numéro unique de cette boutique.")
         mode_creation = st.radio("Méthode de déploiement :", ["🤖 100% Automatique (IA - 10 Produits Gagnants)", "🛠️ Manuel de Zéro (Nombre de produits au choix)"])
         liste_parametres_produits = []
@@ -362,8 +377,11 @@ else:
                 liste_parametres_produits.append({"nom": nom_p, "prix": prix_p})
 
         if st.button("🚀 Forger l'infrastructure de la boutique"):
-            if nom_shop:
+            if nom_shop and courriel_interac_vendeur:
                 with st.spinner("L'IA génère et structure votre catalogue commercial..."):
+                    
+                    prefixe_interac = f"💵 **Mode de paiement sécurisé : Virement Interac à {courriel_interac_vendeur}**\n*Question : Boutique | Réponse : Votre Nom*\n\n---\n"
+                    
                     if mode_creation == "🤖 100% Automatique (IA - 10 Produits Gagnants)":
                         prompt_catalogue = f"""Tu es un expert en e-commerce et un copywriter de génie.
                         Génère une liste de EXACTEMENT 10 produits différents, innovants, viraux et hautement rentables pour la boutique '{nom_shop}' dans la niche '{niche_shop}'.
@@ -371,7 +389,7 @@ else:
                         
                         ### 📦 [Nom du produit gagnant]
                         * **Description** : [Description marketing percutante d'environ 3 phrases]
-                        * **🔥 Pourquoi ce produit est viral** : [Argumentaire de vente massif style tendance TikTok / accroche psychologique]
+                        * **🔥 Pourquoi ce produit est viral** : [Argumentaire de vente massif style tendance TikTok]
                         * **Prix** : {prix_par_defaut} $
                         
                         Génère les 10 produits les uns après les autres. Ne mets aucune introduction ni conclusion, écris seulement le Markdown."""
@@ -388,36 +406,50 @@ else:
                         Génère le rendu au format Markdown en utilisant STRICTEMENT cette mise en page pour chaque produit :
                         ### 📦 [Insérer ici le Nom exact du produit]
                         * **Description** : [Insérer une description attractive et moderne d'environ 3 phrases]
-                        * **🔥 Pourquoi ce produit est viral** : [Argumentaire de vente massif de style TikTok Trend]
+                        * **🔥 Pourquoi ce produit est viral** : [Argumentaire de vente massif]
                         * **Prix** : [Insérer ici le prix exact spécifié] $
                         
                         N'écris rien d'autre. Pas d'introduction, pas de conclusion."""
                         prix_stockage = liste_parametres_produits["prix"] if liste_parametres_produits else 29.99
                     
                     catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.7)
-                    if outils.ajouter_boutique(nom_shop, niche_shop, catalogue_markdown, prix_stockage, couleur="#f8fafc"):
+                    contenu_final_interac = prefixe_interac + catalogue_markdown
+                    
+                    if outils.ajouter_boutique(nom_shop, niche_shop, contenu_final_interac, prix_stockage, couleur="#f8fafc"):
                         st.toast(f"🏬 Boutique '{nom_shop}' injectée avec succès !", icon="✅")
                         st.rerun()
                     else:
                         st.error("❌ Ce nom de boutique est déjà réservé sur votre serveur.")
             else:
-                st.error("⚠️ Veuillez renseigner le nom de la boutique.")
-
+                st.error("⚠️ Veuillez renseigner le nom de la boutique et votre courriel Interac.")
     with tab3:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops:
             st.info("Aucun site web actif détecté sur vos grappes de serveurs actuellement.")
         else:
-            choix = st.selectbox("Sélectionnez la boutique à inspecter :", liste_shops, format_func=lambda x: f"⚙️ {x} [{x}]")
+            choix = st.selectbox("Sélectionnez la boutique à inspecter :", liste_shops, format_func=lambda x: f"⚙️ {x[0]} [{x[1]}]")
             if choix:
                 nom, niche, contenu, couleur, prix = choix
                 nom_formate = nom.lower().replace(' ', '-')
                 lien_public = f"/?shop={nom_formate}"
                 contenu_propre = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
                 
-                # ✅ LIEN BOUTON PERMANENT ET ULTRA-VISIBLE POUR LE ROUTAGE PUBLIC
+                # ✅ BOUTON RESTE ACCESSIBLE EN PERMANENCE
                 st.link_button(f"🌍 Ouvrir la page publique de : {nom.upper()}", url=lien_public, type="primary")
                 st.markdown("---")
+                
+                # ✅ INSTRUCTIONS LOGISTIQUES MANUELLES POUR LES JEUNES DROPSHIPPERS
+                st.markdown("""
+                <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 4px solid #00ffcc; margin-bottom: 15px;'>
+                    <span style='color: #00ffcc; font-weight: bold;'>📋 PROTOCOLE DE LIVRAISON DROPSHIPPING :</span><br>
+                    <span style='font-size: 13px; color: #cbd5e1;'>
+                    1. Vérifie ton application bancaire Desjardins : Valide que tu as reçu le virement Interac pour le montant total.<br>
+                    2. Rends-toi sur le site de ton grossiste / fournisseur (ex: AliExpress) pour commander l'article.<br>
+                    3. Achète l'article avec l'argent reçu et <b>colle l'adresse de livraison exacte du client</b> (disponible ci-dessous).<br>
+                    4. Le fournisseur expédie l'objet. Tu encaisses et conserves le bénéfice net dans tes poches !
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 st.markdown("### 📥 Boîte de Réception des Commandes Clients")
                 commandes_recues = outils.recuperer_commandes_boutique(nom)
@@ -428,12 +460,13 @@ else:
                     for cmd in commandes_recues:
                         c_nom, c_adresse, c_articles, c_total, c_date = cmd
                         st.markdown(f"""
-                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 4px solid #00ffcc; margin-bottom: 10px;'>
-                            <span style='font-size: 11px; color: #94a3b8;'>📅 Reçu le : {c_date}</span><br>
-                            👤 <b>Client :</b> {c_nom} <br>
-                            📍 <b>Adresse de livraison :</b> {c_adresse} <br>
-                            📦 <b>Commande :</b> {c_articles} <br>
-                            💰 <b>Total Encaissé :</b> {c_total} $
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 4px solid #ff0055; margin-bottom: 10px;'>
+                            <span style='font-size: 11px; color: #94a3b8;'>📅 Commande reçue le : {c_date}</span><br>
+                            👤 <b>Acheteur :</b> {c_nom} <br>
+                            📍 <b>ADRESSE À COPIER CHEZ LE FOURNISSEUR :</b><br>
+                            <input type='text' value='{c_adresse}' style='width:100%; background:#0f172a; color:#fff; border:1px solid #334155; padding:6px; border-radius:4px; margin-top:4px;' readonly><br><br>
+                            📦 <b>Contenu du panier :</b> {c_articles} <br>
+                            💰 <b>Total collecté (Interac) :</b> {c_total} $
                         </div>
                         """, unsafe_allow_html=True)
                 
