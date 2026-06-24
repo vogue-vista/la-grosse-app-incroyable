@@ -555,13 +555,17 @@ else:
                 shop_branding = st.selectbox("Sélectionnez la boutique à modifier :", liste_shops, format_func=lambda x: f"✨ {x}", key="sb_select")
                 nouveau_fond = st.text_input("Collez l'URL de votre image ou votre couleur hexadécimale :", "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)")
                 
-                if st.button("💾 Appliquer la charte graphique"):
+                                if st.button("💾 Appliquer la charte graphique"):
+                    nom_boutique_selectionnee = shop_branding[0]
+                    
                     conn = outils.obtenir_connexion()
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE boutiques SET couleur = ? WHERE nom = ?", (nouveau_fond, shop_branding))
+                    cursor.execute("UPDATE boutiques SET couleur = ? WHERE nom = ?", (nouveau_fond, nom_boutique_selectionnee))
                     conn.commit()
                     conn.close()
-                    st.success(f"🎨 L'ambiance visuelle a été mise à jour !")
+                    st.success(f"🎨 L'ambiance visuelle de '{nom_boutique_selectionnee}' a été mise à jour !")
+                    st.rerun()
+
 
     with tab7:
         st.header("💎 Rente Réelle : Déploiement de Logiciels Micro-SaaS")
