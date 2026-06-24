@@ -555,7 +555,7 @@ else:
                 shop_branding = st.selectbox("Sélectionnez la boutique à modifier :", liste_shops, format_func=lambda x: f"✨ {x}", key="sb_select")
                 nouveau_fond = st.text_input("Collez l'URL de votre image ou votre couleur hexadécimale :", "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)")
                 
-                                if st.button("💾 Appliquer la charte graphique"):
+                if st.button("💾 Appliquer la charte graphique"):
                     nom_boutique_selectionnee = shop_branding[0]
                     
                     conn = outils.obtenir_connexion()
