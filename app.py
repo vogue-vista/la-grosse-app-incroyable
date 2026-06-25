@@ -611,24 +611,19 @@ Une fois votre commande validée dans le formulaire ci-dessous, votre clé d'act
                 for abonn in abonnements_actifs:
                     plateforme, client, note, tarif, statut, date_ins = abonn
                     st.write(f"🔑 **{client}** a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
-                    def ajouter_message_forum(auteur, message):
-    conn = obtenir_connexion()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO forum (auteur, message) VALUES (?, ?)", (auteur, message))
-    conn.commit()
-    conn.close()
-
-def recuperer_messages_forum():
-    conn = obtenir_connexion()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT auteur, message, timestamp FROM forum ORDER BY id DESC LIMIT 50")
-        res = cursor.fetchall()
-    except:
-        cursor.execute("CREATE TABLE IF NOT EXISTS forum (id INTEGER PRIMARY KEY AUTOINCREMENT, auteur TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
-        conn.commit()
-        res = []
-    finally:
-        conn.close()
-    return res
-
+                 for s_saas in liste_shops:
+                    # s_saas est un tuple, on prend son nom à l'index 0
+                    nom_saas_boutique = s_saas[0]
+                    if "SaaS" in nom_saas_boutique or "Abonnement" in nom_saas_boutique:
+                        nom_saas_propre = nom_saas_boutique.lower().replace(' ', '-')
+                        st.link_button(f"🌍 Ouvrir la page d'abonnement : {nom_saas_boutique.upper()}", url=f"/?shop={nom_saas_propre}")
+            
+            st.markdown("---")
+            st.subheader("📊 Liste des Licences Logicielles Actives")
+            abonnements_actifs = outils.recuperer_abonnements()
+            if not abonnements_actifs:
+                st.info("Aucune rente logicielle active pour le moment.")
+            else:
+                for abonn in abonnements_actifs:
+                    plateforme, client, email_client, tarif, statut, date_ins = abonn
+                    st.write(f"🔑 **{client}** ({email_client}) a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
