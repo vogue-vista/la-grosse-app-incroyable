@@ -607,7 +607,7 @@ Une fois votre commande validée dans le formulaire ci-dessous, votre clé d'act
                 for abonn in abonnements_actifs:
                     plateforme, client, note, tarif, statut, date_ins = abonn
                     st.write(f"🔑 **{client}** a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
-                 for s_saas in liste_shops:
+            for s_saas in liste_shops:
                     # s_saas est un tuple, on prend son nom à l'index 0
                     nom_saas_boutique = s_saas[0]
                     if "SaaS" in nom_saas_boutique or "Abonnement" in nom_saas_boutique:
