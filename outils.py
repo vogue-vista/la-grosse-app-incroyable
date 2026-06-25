@@ -3,16 +3,18 @@ import streamlit as st
 import requests
 from groq import Groq
 
+# Configuration des clés API (à définir dans .streamlit/secrets.toml)
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 SCRAPE_DO_KEY = st.secrets["SCRAPE_DO_KEY"]
 
 def obtenir_connexion():
-    """Gère l'accès simultané à SQLite pour éviter les plantages"""
+    """Gère l'accès simultané à SQLite"""
     return sqlite3.connect("empire_v2.db", timeout=20, check_same_thread=False)
 
 def initialiser_base_de_donnees():
     conn = obtenir_connexion()
     cursor = conn.cursor()
+    # Création des tables
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
             id INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT UNIQUE, niche TEXT, contenu TEXT, couleur TEXT, prix REAL DEFAULT 0.0
@@ -31,7 +33,18 @@ def initialiser_base_de_donnees():
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, texte TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
     cursor.execute("CREATE TABLE IF NOT EXISTS codes_utilises (code TEXT PRIMARY KEY)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS forum (id INTEGER PRIMARY KEY AUTOINCREMENT, auteur TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
+    # ✅ Table forum
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS forum (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, auteur TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    # ✅ Table livreurs
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS livreurs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT UNIQUE, telephone TEXT, zone TEXT, statut TEXT DEFAULT 'Actif'
+        )
+    """)
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
@@ -55,7 +68,7 @@ def marquer_code_utilise(code):
     finally:
         conn.close()
 
-def appeler_groq(prompt, temperature=0.7):
+def appeler_groq(prompt, temperature=0.5):
     try:
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
@@ -65,7 +78,7 @@ def appeler_groq(prompt, temperature=0.7):
         )
         return completion.choices[0].message.content
     except Exception as e:
-        st.error(f"⚠️ Le moteur d'IA est surchargé. (Erreur : {e})")
+        st.error(f"⚠️ Erreur IA : {e}")
         st.stop()
 
 def executer_scraping_real(cible_url):
@@ -82,14 +95,14 @@ def executer_scraping_real(cible_url):
         else:
             return f"Contenu indisponible (Code : {response.status_code})"
     except Exception as e:
-        return f"Erreur de connexion aux serveurs de scraping : {e}"
+        return f"Erreur scraping : {e}"
 
 def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
     conn = obtenir_connexion()
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO boutiques (nom, niche, contenu, couleur, prix) VALUES (?, ?, ?, ?, ?)", (nom, niche, contenu, couleur, prix))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Infrastructure en ligne : '{nom}' a été déployé !",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Boutique '{nom}' déployée !",))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -106,7 +119,7 @@ def enregistrer_commande_interne(nom_boutique, nom_client, adresse, commande, to
             VALUES (?, ?, ?, ?, ?)
         """, (nom_boutique, nom_client, adresse, commande, total))
         cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (total,))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Encaissé : Panier de {total}$ validé sur {nom_boutique} !",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Commande : {total}$ sur {nom_boutique} !",))
         conn.commit()
     finally:
         conn.close()
@@ -124,7 +137,7 @@ def enregistrer_abonnement(nom_plateforme, nom_client, email_client, tarif):
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO abonnements (nom_plateforme, nom_client, email_client, tarif) VALUES (?, ?, ?, ?)", (nom_plateforme, nom_client, email_client, tarif))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💎 Nouvel abonnement récurrent de {tarif}$ reçu sur {nom_plateforme} !",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💎 Abonnement {tarif}$ : {nom_plateforme} !",))
         conn.commit()
     finally:
         conn.close()
@@ -142,7 +155,7 @@ def supprimer_boutique(nom_boutique):
     cursor = conn.cursor()
     try:
         cursor.execute("DELETE FROM boutiques WHERE nom = ?", (nom_boutique,))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🗑️ La boutique '{nom_boutique}' a été effacée.",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🗑️ Boutique '{nom_boutique}' supprimée.",))
         conn.commit()
         return True
     except:
@@ -173,20 +186,6 @@ def recuperer_ca_total():
     conn.close()
     return res[0] if res else 0.0
 
-def recuperer_notifications():
-    conn = obtenir_connexion()
-    cursor = conn.cursor()
-    cursor.execute("SELECT texte FROM notifications ORDER BY id DESC LIMIT 3")
-    res = cursor.fetchall()
-    conn.close()
-    if not res:
-        return [
-            "🟢 Système centralisé en attente d'activité commerciale...",
-            "📡 Proxies Scrape.do synchronisés.",
-            "🤖 Modèles Groq Llama-3.1 opérationnels."
-        ]
-    return [r[0] for r in res]
-
 def ajouter_message_forum(auteur, message):
     conn = obtenir_connexion()
     cursor = conn.cursor()
@@ -197,13 +196,38 @@ def ajouter_message_forum(auteur, message):
 def recuperer_messages_forum():
     conn = obtenir_connexion()
     cursor = conn.cursor()
+    cursor.execute("SELECT auteur, message, timestamp FROM forum ORDER BY id DESC LIMIT 50")
+    res = cursor.fetchall()
+    conn.close()
+    return res
+
+def s_inscrire_livreur(nom_livreur, telephone, zone):
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
     try:
-        cursor.execute("SELECT auteur, message, timestamp FROM forum ORDER BY id DESC LIMIT 50")
-        res = cursor.fetchall()
-    except:
-        cursor.execute("CREATE TABLE IF NOT EXISTS forum (id INTEGER PRIMARY KEY AUTOINCREMENT, auteur TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
+        cursor.execute("INSERT INTO livreurs (nom, telephone, zone) VALUES (?, ?, ?)", (nom_livreur, telephone, zone))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🚲 Livreur : '{nom_livreur}' a rejoint le hub !",))
         conn.commit()
-        res = []
+        return True
+    except:
+        return False
     finally:
         conn.close()
+
+def recuperer_commandes_sans_livreur():
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nom_boutique, nom_client, adresse, commande, total, timestamp FROM boite_reception ORDER BY id DESC")
+    res = cursor.fetchall()
+    conn.close()
     return res
+
+def recuperer_notifications():
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    cursor.execute("SELECT texte FROM notifications ORDER BY id DESC LIMIT 3")
+    res = cursor.fetchall()
+    conn.close()
+    if not res:
+        return ["🟢 Système opérationnel...", "📡 Scrape.do actif.", "🤖 Groq actif."]
+    return [r[0] for r in res]
