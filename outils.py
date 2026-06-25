@@ -24,16 +24,14 @@ def initialiser_base_de_donnees():
         )
     """)
     cursor.execute("CREATE TABLE IF NOT EXISTS statistiques (cle TEXT PRIMARY KEY, valeur REAL)")
-    
-    # ✅ NOUVELLE STRUCTURE : Table des messages clients reçus dans la boîte de réception interne
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boite_reception (
             id INTEGER PRIMARY KEY AUTOINCREMENT, nom_boutique TEXT, nom_client TEXT, adresse TEXT, commande TEXT, total REAL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
     cursor.execute("CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, texte TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
     cursor.execute("CREATE TABLE IF NOT EXISTS codes_utilises (code TEXT PRIMARY KEY)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS forum (id INTEGER PRIMARY KEY AUTOINCREMENT, auteur TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
     cursor.execute("INSERT OR IGNORE INTO statistiques (cle, valeur) VALUES ('ca_total', 0.0)")
     conn.commit()
     conn.close()
@@ -99,7 +97,6 @@ def ajouter_boutique(nom, niche, contenu, prix, couleur="#45f3ff"):
     finally:
         conn.close()
 
-# ✅ NOUVELLE FONCTION : Enregistrer une commande dans la boîte de réception interne de l'application
 def enregistrer_commande_interne(nom_boutique, nom_client, adresse, commande, total):
     conn = obtenir_connexion()
     cursor = conn.cursor()
@@ -108,15 +105,12 @@ def enregistrer_commande_interne(nom_boutique, nom_client, adresse, commande, to
             INSERT INTO boite_reception (nom_boutique, nom_client, adresse, commande, total) 
             VALUES (?, ?, ?, ?, ?)
         """, (nom_boutique, nom_client, adresse, commande, total))
-        
-        # Mettre à jour le chiffre d'affaires
         cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (total,))
         cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"💰 Encaissé : Panier de {total}$ validé sur {nom_boutique} !",))
         conn.commit()
     finally:
         conn.close()
 
-# ✅ NOUVELLE FONCTION : Récupérer les messages et commandes d'une boutique spécifique
 def recuperer_commandes_boutique(nom_boutique):
     conn = obtenir_connexion()
     cursor = conn.cursor()
@@ -192,3 +186,24 @@ def recuperer_notifications():
             "🤖 Modèles Groq Llama-3.1 opérationnels."
         ]
     return [r[0] for r in res]
+
+def ajouter_message_forum(auteur, message):
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO forum (auteur, message) VALUES (?, ?)", (auteur, message))
+    conn.commit()
+    conn.close()
+
+def recuperer_messages_forum():
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT auteur, message, timestamp FROM forum ORDER BY id DESC LIMIT 50")
+        res = cursor.fetchall()
+    except:
+        cursor.execute("CREATE TABLE IF NOT EXISTS forum (id INTEGER PRIMARY KEY AUTOINCREMENT, auteur TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
+        conn.commit()
+        res = []
+    finally:
+        conn.close()
+    return res
