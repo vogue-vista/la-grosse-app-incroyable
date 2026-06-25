@@ -164,7 +164,7 @@ if not st.session_state.compte_actif:
         <span style='font-size: 13px; color: #cbd5e1; line-height: 1.6;'>
         Bonjour aux parents. Cette application n'est pas gérée par une multinationale américaine comme Shopify ou Amazon, mais par un <b>développeur indépendant et local</b>. Et c'est votre meilleure garantie de sécurité :<br><br>
         • <b>Zéro Donnée Sensible</b> : Contrairement aux géants du web qui stockent des millions de cartes de crédit et de mots de passe (et qui se font pirater), notre application ne collecte <b>absolument rien</b>. Pas de carte bancaire, pas de mot de passe, pas de compte connecté. Un hacker ne peut pas voler ce qui n'existe pas.<br>
-        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient les membres par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel sert uniquement de panneau d'affichage textuel pour afficher la logistique.<br>
+        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient les membres par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel sert uniquement de panneau d'affichage textuel pour coordonner la logistique.<br>
         • <b>Soutien Direct</b> : Pas de robot d'assistance à l'autre bout du monde. Vous utilisez un outil indépendant, épuré, transparent et conçu pour initier les jeunes aux affaires de manière sécuritaire et responsable.<br>
         • <b>Garantie d'Essai Gratuit</b> : Votre enfant peut utiliser un code d'accès temporaire pour valider le système sans que vous n'ayez à débourser un seul dollar.<br>
         • <b>Zéro Risque de Fournisseur Étranger</b> : Ce système n'utilise pas de sites obscurs ou de dropshipping international. Vos enfants collaborent avec un réseau de <b>livreurs locaux inscrits sur l'application</b> qui prennent en charge les achats physiques locaux.
@@ -260,13 +260,18 @@ col3.metric(label="⚡ Licence Active", value=f"Plan {st.session_state.forfait}"
 st.markdown("---")
 
 # --- INITIALISATION DES ONGLETS PUBLICS ET PRIVÉS ---
-# Le marché et forum est extrait pour être visible par tout le monde !
+# Intégration de tes nouveaux noms d'onglets pour remettre B3 à sa place !
 if not st.session_state.compte_actif:
     tab1, = st.tabs(["🛍️ B1: Marché & Forum"])
 else:
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        "🛍️ B1: Marché & Forum", "🏬 B2: Concepteur de Boutique Multi-Commerce", "👀 Mes Boutiques", 
-        "🚲 Hub Logistique & Livreurs", "🕵️‍♂️ Radar Espion", "🎨 Studio Branding", "💎 Rente Réelle"
+        "🛍️ B1: Marché & Forum", 
+        "🏬 B2: Concepteur de Boutique Multi-Commerce", 
+        "👀 Mes Boutiques", 
+        "🚲 Hub Logistique & Livreurs", 
+        "🕵️‍♂️ Radar Espion Local", 
+        "💡 B3: R&D Élite", 
+        "🎨 Studio Branding & SaaS"
     ])
 
 with tab1:
@@ -293,7 +298,8 @@ with tab1:
                 blocs = b_contenu_propre.split("### 📦")
                 for p_idx, bloc in enumerate(blocs[1:]):
                     if bloc.strip():
-                        nom_produit = bloc.split("\n")[0].strip()
+                        lignes_bloc = bloc.split("\n")
+                        nom_produit = lignes_bloc[0].strip()
                         if recherche_client and (recherche_client not in nom_produit.lower() and recherche_client not in bloc.lower()):
                             continue
                             
@@ -314,7 +320,6 @@ with tab1:
                 """, unsafe_allow_html=True)
                 st.markdown(f"### 📦 {art['bloc_texte']}", unsafe_allow_html=True)
                 
-                # Lien direct pour commander en situation réelle sur cette boutique
                 nom_boutique_url = art['vendeur'].lower().replace(" ", "-")
                 st.link_button(f"🛒 Ouvrir la page de commande réelle : {art['nom_produit']}", url=f"/?shop={nom_boutique_url}", key=f"market_lnk_{art['b_idx']}_{art['p_idx']}", type="secondary")
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -345,7 +350,6 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
 
-# Arrêt de l'exécution ici si la personne n'est pas abonnée (elle ne verra légitimement que le marché)
 if not st.session_state.compte_actif:
     st.stop()
 with tab2:
@@ -580,13 +584,11 @@ with tab2:
                 if not liste_shops:
                     st.warning("Aucune boutique disponible pour implanter l'IA.")
                 else:
-                    # Résolution du bug du tuple pour l'injecteur de chatbot
-                    noms_shops_chat = [s[0] for s in liste_shops]
+                    noms_shops_chat = [s for s in liste_shops]
                     shop_nom_chat = st.selectbox("Sélectionnez la boutique à équiper d'un Chatbot :", noms_shops_chat, key="select_shop_chat")
                     
                     if st.button("⚡ Greffer l'Assistant commercial IA", key="btn_greffe_chatbot"):
-                        # Recherche de la boutique complète correspondante
-                        shop_data = next((s for s in liste_shops if s[0] == shop_nom_chat), None)
+                        shop_data = next((s for s in liste_shops if s == shop_nom_chat), None)
                         if shop_data:
                             nom_s, niche_s, contenu_s, couleur_s, prix_s = shop_data
                             if "🤖 Agent Actif" not in contenu_s:
@@ -605,7 +607,7 @@ with tab2:
                         prompt_num = f"Rédige le plan d'action détaillé d'un guide haut de gamme sur : {theme_num}"
                         st.markdown(outils.appeler_groq(prompt_num))
 
-    with tab6:
+    with tab7:
         st.header("🎨 Studio Branding & Identité Visuelle")
         if st.session_state.forfait != "Pro":
             st.markdown("""
@@ -619,8 +621,7 @@ with tab2:
             if not liste_shops:
                 st.warning("Aucune boutique disponible pour le re-branding.")
             else:
-                # Résolution du bug du tuple pour le Studio Branding
-                noms_shops_branding = [s[0] for s in liste_shops]
+                noms_shops_branding = [s for s in liste_shops]
                 shop_nom_branding = st.selectbox("Sélectionnez la boutique à modifier :", noms_shops_branding, key="sb_select")
                 nouveau_fond = st.text_input("Collez l'URL de votre image ou votre couleur hexadécimale :", "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)", key="input_fond_custom")
                 
@@ -633,60 +634,47 @@ with tab2:
                     st.success(f"🎨 L'ambiance visuelle de '{shop_nom_branding}' a été mise à jour !")
                     st.rerun()
 
-    with tab7:
-        st.header("💎 Rente Réelle : Déploiement de Logiciels Micro-SaaS")
-        if st.session_state.forfait != "Pro":
-            st.markdown("""
-            <div style='background-color: #1a1c23; padding: 25px; border-radius: 12px; border: 1px solid #00ffcc; text-align: center;'>
-                <h3>🔒 MODULE DE REVENU PASSIF VERROUILLÉ</h3>
-                <p>Le système de génération de licences logicielles automatisées nécessite l'infrastructure Pro.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.subheader("🚀 Forger une Application Clone (Générateur de Rente)")
-            st.markdown("Créez instantanément une page publique d'abonnement pour vendre votre propre application en marque blanche.")
-            
-            nom_logiciel_vente = st.text_input("Nom de l'application logicielle à vendre :", "SaaS Automate Pro", key="input_nom_saas")
-            tarif_SaaS = st.number_input("Prix de l'abonnement mensuel ($) :", min_value=10.0, value=100.0, step=10.0, key="input_prix_saas")
-            
-            if st.button("💎 Déployer la Page de Vente Logicielle", key="btn_deploy_saas"):
-                cle_auto = f"STARTER-AUTO-{random.randint(10000, 99999)}"
-                
-                texte_boutique_SaaS = f"""
+    # --- INJECTION DU MODULE DE REVENU PASSIF MICRO-SAAS ---
+    st.markdown("---")
+    st.subheader("💎 Rente Réelle : Déploiement de Logiciels Micro-SaaS")
+    if st.session_state.forfait != "Pro":
+        st.markdown("<p>🔒 Le système de génération de licences logicielles automatisées nécessite l'infrastructure Pro.</p>", unsafe_allow_html=True)
+    else:
+        st.markdown("Créez instantanément une page publique d'abonnement pour vendre votre propre application en marque blanche.")
+        nom_logiciel_vente = st.text_input("Nom de l'application logicielle à vendre :", "SaaS Automate Pro", key="input_nom_saas")
+        tarif_SaaS = st.number_input("Prix de l'abonnement mensuel ($) :", min_value=10.0, value=100.0, step=10.0, key="input_prix_saas")
+        
+        if st.button("💎 Déployer la Page de Vente Logicielle", key="btn_deploy_saas"):
+            cle_auto = f"STARTER-AUTO-{random.randint(10000, 99999)}"
+            texte_boutique_SaaS = f"""
 # 🚀 Bienvenue sur {nom_logiciel_vente}
-
 ### Accédez instantanément à votre infrastructure de Business Automatique.
 * **Outils inclus** : Scanneur de leads B2B, Concepteur de boutiques IA, Radar Espion.
 * **Facturation** : Récurrente de {tarif_SaaS}$ / mois, sans aucun engagement.
-
 ---
-
 ### 📦 Forfait unique : Accès Mensuel Immédiat
 Remplissez vos informations ci-dessous pour sécuriser votre accès instantané au terminal.
-
 ### 🔓 VOTRE CLÉ LOGICIELLE UNIQUE SERA DÉLIVRÉE ICI : 
 Une fois votre commande validée dans le formulaire ci-dessous, votre clé d'activation **`{cle_auto}`** sera rattachée à votre nom.
 """
-                outils.ajouter_boutique(nom_logiciel_vente, "Abonnement Logiciel SaaS", texte_boutique_SaaS, tarif_SaaS, couleur="#f8fafc")
-                st.success("🎉 Page de vente configurée avec succès !")
-                st.rerun()
-            
-            st.markdown("---")
-            st.subheader("🔗 Liens d'accès à vos pages de vente actives")
-            
-            # Correction de l'alignement et de l'extraction propre des données SaaS (Ligne 610)
-            for s_saas in liste_shops:
-                nom_saas_boutique, niche_saas_boutique, _, _, _ = s_saas
-                if "SaaS" in niche_saas_boutique or "Abonnement" in niche_saas_boutique:
-                    nom_saas_propre = nom_saas_boutique.lower().replace(' ', '-')
-                    st.link_button(f"🌍 Ouvrir la page d'abonnement : {nom_saas_boutique.upper()}", url=f"/?shop={nom_saas_propre}")
-            
-            st.markdown("---")
-            st.subheader("📊 Liste des Licences Logicielles Actives")
-            abonnements_actifs = outils.recuperer_abonnements()
-            if not abonnements_actifs:
-                st.info("Aucune rente logicielle active pour le moment.")
-            else:
-                for abonn in abonnements_actifs:
-                    plateforme, client, email_client, tarif, statut, date_ins = abonn
-                    st.write(f"🔑 **{client}** ({email_client}) a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
+            outils.ajouter_boutique(nom_logiciel_vente, "Abonnement Logiciel SaaS", texte_boutique_SaaS, tarif_SaaS, couleur="#f8fafc")
+            st.success("🎉 Page de vente configurée avec succès !")
+            st.rerun()
+        
+        st.markdown("---")
+        st.subheader("🔗 Liens d'accès à vos pages de vente actives")
+        for s_saas in liste_shops:
+            nom_saas_boutique, niche_saas_boutique, _, _, _ = s_saas
+            if "SaaS" in niche_saas_boutique or "Abonnement" in niche_saas_boutique:
+                nom_saas_propre = nom_saas_boutique.lower().replace(' ', '-')
+                st.link_button(f"🌍 Ouvrir la page d'abonnement : {nom_saas_boutique.upper()}", url=f"/?shop={nom_saas_propre}")
+        
+        st.markdown("---")
+        st.subheader("📊 Liste des Licences Logicielles Actives")
+        abonnements_actifs = outils.recuperer_abonnements()
+        if not abonnements_actifs:
+            st.info("Aucune rente logicielle active pour le moment.")
+        else:
+            for abonn in abonnements_actifs:
+                plateforme, client, email_client, tarif, statut, date_ins = abonn
+                st.write(f"🔑 **{client}** ({email_client}) a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
