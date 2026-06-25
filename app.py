@@ -597,10 +597,6 @@ Une fois votre commande validée dans le formulaire ci-dessous, votre clé d'act
             
             st.markdown("---")
             st.subheader("🔗 Liens d'accès à vos pages de vente actives")
-            for s_saas in liste_shops:
-                if "SaaS" in s_saas or "Abonnement" in s_saas:
-                    nom_saas_propre = s_saas.lower().replace(' ', '-')
-                    st.link_button(f"🌍 Ouvrir la page d'abonnement : {s_saas.upper()}", url=f"/?shop={nom_saas_propre}")
             
             st.markdown("---")
             st.subheader("📊 Liste des Licences Logicielles Actives")
