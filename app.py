@@ -3,11 +3,18 @@ import outils
 import re
 import random
 
-# Initialisation de la page et de l'infrastructure SQLite locale
-st.set_page_config(page_title="Empire Tycoon v2", layout="wide", initial_sidebar_state="expanded")
+# Initialisation lourde et configuration de la fenêtre du navigateur web Streamlit
+st.set_page_config(
+    page_title="Empire Tycoon Central Terminal v2.5", 
+    page_icon="👑", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
+
+# Lancement et isolation automatique de la structure locale SQLite
 outils.initialiser_base_de_donnees()
 
-# Initialisation et persistance des variables d'état de session Streamlit
+# Garantie de la persistance des variables d'état système au rafraîchissement (anti-bug rerun)
 if "panier_client" not in st.session_state:
     st.session_state.panier_client = []
 if "compte_actif" not in st.session_state: 
@@ -15,7 +22,8 @@ if "compte_actif" not in st.session_state:
 if "forfait" not in st.session_state: 
     st.session_state.forfait = "Aucun"
 
-# --- 1. ROUTAGE D'URL PUBLIC POUR LES VRAIS CLIENTS ---
+# --- 1. ROUTAGE D'URL PUBLIC POUR LES VRAIS CLIENTS EXTERNES ---
+# Ce bloc intercepte les liens de type '://mon-app.com' pour afficher le catalogue de vente
 query_params = st.query_params
 
 if "shop" in query_params:
@@ -23,7 +31,7 @@ if "shop" in query_params:
     liste_shops_publics = outils.recuperer_boutiques()
     boutique_trouvee = None
     
-    # Scan de la base de données pour trouver l'URL demandée
+    # Parcours sécurisé de l'infrastructure de stockage pour localiser la vitrine demandée
     for s in liste_shops_publics:
         if s[0].lower().replace(" ", "-") == shop_public.lower():
             boutique_trouvee = s
@@ -37,40 +45,60 @@ if "shop" in query_params:
         except (ValueError, TypeError):
             prix_bdd_propre = 0.0
         
-        # Nettoyage des balises Markdown de code résiduelles
+        # Nettoyage méticuleux des balises Markdown résiduelles générées par le moteur d'IA
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
-        # DESIGN DE LA VITRINE CLIENT (Habillage CSS dynamique injecté)
+        # INJECTION CSS MASSIVE ET EXCLUSIVE POUR LE RENDU PROFESSIONNEL DE LA VITRINE CLIENT
         fond_branding = couleur if (couleur and not "@" in couleur) else "#f8fafc"
         st.markdown(f"""
         <style>
         .stApp {{ background: {fond_branding} !important; color: #0f172a !important; }}
-        h1, h2, h3, h4, h5, p, span, label, div {{ color: #0f172a !important; }}
+        h1, h2, h3, h4, h5, p, span, label, div {{ color: #0f172a !important; font-family: 'Segoe UI', system-ui, sans-serif !important; }}
         
+        /* Conteneur ultra-esthétique pour le panier d'achat et les formulaires clients */
         div[data-testid="stForm"], .bloc-panier {{ 
             background-color: #ffffff !important; 
             border: 2px solid #e2e8f0 !important; 
-            border-radius: 16px !important; 
-            padding: 25px !important;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
-            margin-bottom: 20px;
+            border-radius: 24px !important; 
+            padding: 35px !important;
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05) !important;
+            margin-bottom: 25px;
         }}
         
+        /* Boutons d'ajout au panier au design moderne style SaaS */
         .stButton>button {{
             background-color: #00ffcc !important;
             color: #0f172a !important;
-            font-weight: bold !important;
-            border-radius: 8px !important;
+            font-weight: 800 !important;
+            font-size: 14px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+            border-radius: 14px !important;
             border: none !important;
+            padding: 14px 28px !important;
+            transition: all 0.25s ease-in-out !important;
+            box-shadow: 0 4px 12px -2px rgb(0 255 204 / 0.4) !important;
         }}
-        input {{ background-color: #ffffff !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important; }}
+        .stButton>button:hover {{
+            transform: translateY(-2px) !important;
+            box-shadow: 0 12px 20px -4px rgb(0 255 204 / 0.6) !important;
+            background-color: #00e6b8 !important;
+        }}
+        input {{ 
+            background-color: #ffffff !important; 
+            color: #0f172a !important; 
+            border: 1px solid #cbd5e1 !important; 
+            border-radius: 12px !important;
+            padding: 12px !important;
+            font-size: 14px !important;
+        }}
         </style>
         """, unsafe_allow_html=True)
         
-        st.title(f"🏬 {nom.upper()}")
+        st.title(f"🏬 ENSEIGNE COMMERCIALE : {nom.upper()}")
         st.subheader(f"✨ Catalogue Officiel : {niche}")
-        st.markdown("---")
-        # INTERPRÉTATION GRAPHIQUE DU CATALOGUE SOLO (Multi-Produits ou Services)
+        st.markdown("<hr style='border: 1px solid #e2e8f0; margin-bottom: 30px;'>", unsafe_allow_html=True)
+        # INTERPRÉTATION GRAPHIQUE COMPLÈTE DU CATALOGUE DE VENTE (Objets, Services ou Infoproduits)
         if "### 📦" in contenu_client:
             blocs_produits = contenu_client.split("### 📦")
             
@@ -79,6 +107,7 @@ if "shop" in query_params:
                     lignes_bloc = bloc.split("\n")
                     nom_produit = lignes_bloc[0].strip()
                     
+                    # Extraction automatique du prix par expression régulière (Regex)
                     trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
                     if trouver_prix:
                         prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".")
@@ -91,23 +120,24 @@ if "shop" in query_params:
                     
                     st.markdown(f"### 📦 {bloc}", unsafe_allow_html=True)
                     
-                    if st.button(f"🛒 Ajouter au panier : {nom_produit}", key=f"btn_ajout_{idx}"):
+                    # Bouton d'ajout dynamique rattaché à chaque produit du catalogue
+                    if st.button(f"🛒 Ajouter à ma sélection : {nom_produit}", key=f"btn_ajout_{idx}"):
                         st.session_state.panier_client.append({"nom": nom_produit, "prix": prix_chiffre, "vendeur": nom})
-                        st.toast(f"✅ {nom_produit} a été ajouté au panier !", icon="🛒")
+                        st.toast(f"✅ {nom_produit} a été ajouté à votre panier !", icon="🛒")
         else:
-            st.markdown(contenu_client)
+            st.markdown(contenu_client, unsafe_allow_html=True)
 
-        st.markdown("---")
-        st.markdown("## 🛒 Votre Panier d'Achat")
+        st.markdown("<br><hr style='border: 1px solid #e2e8f0;'>", unsafe_allow_html=True)
+        st.markdown("## 🛒 Votre Panier d'Achat Réseau")
         
         if not st.session_state.panier_client:
-            st.info("Votre panier est vide. Cliquez sur 'Ajouter au panier' pour sélectionner vos articles.")
+            st.info("Votre panier est actuellement vide. Cliquez sur 'Ajouter au panier' pour sélectionner vos articles.")
             total_commande = 0.0
         else:
             total_commande = 0.0
             st.markdown("<div class='bloc-panier'>", unsafe_allow_html=True)
             for idx_p, item in enumerate(st.session_state.panier_client):
-                col_item1, col_item2 = st.columns(2)
+                col_item1, col_item2 = st.columns([3, 1])
                 with col_item1:
                     st.write(f"🔹 **{item['nom']}** — {item['prix']} $")
                 with col_item2:
@@ -116,22 +146,24 @@ if "shop" in query_params:
                         st.rerun()
                 total_commande += item['prix']
             
-            st.markdown(f"### 💵 Total à payer : {round(total_commande, 2)} $")
-            st.caption("💡 Un livreur de notre réseau logistique s'occupera d'acheter et de vous livrer cet article.")
-            if st.button("🧹 Vider le panier"):
+            st.markdown(f"### 💵 Montant Total : {round(total_commande, 2)} $")
+            st.caption("💡 Logistique de sécurité : Un livreur indépendant de notre réseau prendra en charge l'achat et la livraison locale de votre commande.")
+            if st.button("🧹 Vider complètement le panier"):
                 st.session_state.panier_client = []
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
+        # Formulaire de commande sécurisé relié à la boîte de réception interne
         if st.session_state.panier_client:
-            st.markdown("### ⚡ Finaliser ma Commande en 1-Clic")
+            st.markdown("### ⚡ Finaliser la commande en 1-Clic")
             with st.form("achat_client_form"):
-                nom_client = st.text_input("Nom complet de facturation :", placeholder="Ex: Jean Tremblay")
-                adresse_client = st.text_input("Adresse complète de livraison :", placeholder="Ex: 123 rue des Lilas, Montréal, QC")
+                nom_client = st.text_input("Nom complet pour la facturation :", placeholder="Ex: Jean Tremblay")
+                adresse_client = st.text_input("Adresse municipale exacte pour la livraison :", placeholder="Ex: 742 rue de la Paix, Montréal, QC")
                 
-                texte_bouton = f"🔥 Confirmer ma commande ({round(total_commande, 2)} $)"
+                texte_bouton = f"🔥 Confirmer et commander ({round(total_commande, 2)} $)"
                 if st.form_submit_button(texte_bouton):
                     if nom_client and adresse_client:
+                        # Dispatch de chaque article du panier en base de données
                         for item in st.session_state.panier_client:
                             outils.enregistrer_commande_interne(
                                 nom_boutique=item.get('vendeur', nom),
@@ -142,10 +174,10 @@ if "shop" in query_params:
                             )
                         st.session_state.panier_client = []
                         st.balloons()
-                        st.success("🎉 Votre commande a été enregistrée avec succès ! Le vendeur et son livreur préparent votre colis.")
+                        st.success("🎉 Parfait ! Votre commande a été transmise avec succès au tableau de bord du commerçant.")
                         st.rerun()
                     else:
-                        st.error("⚠️ Erreur : Veuillez remplir votre nom et votre adresse de livraison.")
+                        st.error("⚠️ Formulaire incomplet : Veuillez renseigner votre nom complet ainsi que l'adresse de livraison.")
         st.stop()
 # --- 2. CONFIGURATION DE SESSION ADMINISTRATEUR ---
 if "compte_actif" not in st.session_state: st.session_state.compte_actif = False
@@ -154,27 +186,27 @@ if "forfait" not in st.session_state: st.session_state.forfait = "Aucun"
 # 🔥 BLOC SÉCURITÉ PARENTALE ET TRANSPARENCE AVANT AUTHENTIFICATION
 if not st.session_state.compte_actif:
     st.markdown("""
-    <div style='background-color: #111827; padding: 20px; border-radius: 12px; border: 1px solid #1f2937; text-align: center; margin-bottom: 20px;'>
-        <h4 style='color: #00ffcc; margin: 0;'>💡 PROTOCOLE CENTRAL D'ACTIVATION</h4>
-        <p style='color: #9ca3af; font-size: 14px; margin: 5px 0 0 0;'>« L'application te donne les armes, mais c'est toi qui choisis la guerre. »</p>
+    <div style='background-color: #111827; padding: 25px; border-radius: 16px; border: 1px solid #1f2937; text-align: center; margin-bottom: 25px;'>
+        <h4 style='color: #00ffcc; margin: 0; font-weight: bold; letter-spacing: 1px;'>💡 PROTOCOLE CENTRAL D'ACTIVATION</h4>
+        <p style='color: #9ca3af; font-size: 15px; margin: 8px 0 0 0;'>« L'application te donne les armes, mais c'est toi qui choisis la guerre. »</p>
     </div>
     
-    <div style='background-color: #1e293b; padding: 20px; border-radius: 12px; border-left: 5px solid #3b82f6; margin-bottom: 25px;'>
-        <h5 style='color: #3b82f6; margin-top: 0;'>🛡️ SECTION SÉCURITÉ PARENTALE (Lettre ouverte du créateur)</h5>
-        <span style='font-size: 13px; color: #cbd5e1; line-height: 1.6;'>
+    <div style='background-color: #1e293b; padding: 25px; border-radius: 16px; border-left: 6px solid #3b82f6; margin-bottom: 30px;'>
+        <h5 style='color: #3b82f6; margin-top: 0; font-weight: bold; font-size: 16px;'>🛡️ SECTION SÉCURITÉ PARENTALE (Lettre ouverte du créateur)</h5>
+        <span style='font-size: 13.5px; color: #cbd5e1; line-height: 1.7;'>
         Bonjour aux parents. Cette application n'est pas gérée par une multinationale américaine comme Shopify ou Amazon, mais par un <b>développeur indépendant et local</b>. Et c'est votre meilleure garantie de sécurité :<br><br>
         • <b>Zéro Donnée Sensible</b> : Contrairement aux géants du web qui stockent des millions de cartes de crédit et de mots de passe (et qui se font pirater), notre application ne collecte <b>absolument rien</b>. Pas de carte bancaire, pas de mot de passe, pas de compte connecté. Un hacker ne peut pas voler ce qui n'existe pas.<br>
         • <b>100% Circuit Bancaire Canadien</b> : Les clients paient les membres par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel sert uniquement de panneau d'affichage textuel pour coordonner la logistique.<br>
         • <b>Soutien Direct</b> : Pas de robot d'assistance à l'autre bout du monde. Vous utilisez un outil indépendant, épuré, transparent et conçu pour initier les jeunes aux affaires de manière sécuritaire et responsable.<br>
         • <b>Garantie d'Essai Gratuit</b> : Votre enfant peut utiliser un code d'accès temporaire pour valider le système sans que vous n'ayez à débourser un seul dollar.<br>
-        • <b>Zéro Risque de Fournisseur Étranger</b> : Ce système n'utilise pas de sites obscurs ou de dropshipping international. Vos enfants collaborent avec un réseau de <b>livreurs locaux inscrits sur l'application</b> qui prennent en charge les achats physiques locaux.
+        • <b>Zéro Risque de Fournisseur Étranger</b> : Ce système n'utilise pas de sites obscurs ou de dropshipping international. Vos enfants collaborent avec un réseau de <b>livreurs locaux inscrits sur l'application</b> qui prennent en charge les achats physiques locaux de façon sécurisée.
         </span>
     </div>
     """, unsafe_allow_html=True)
 
 # --- 3. GESTION DES FORFAITS ET BARRE LATÉRALE DE SÉCURITÉ ---
 st.sidebar.title("🎮 Centre de Contrôle")
-st.sidebar.markdown("---")
+st.sidebar.markdown("<hr style='border: 1px solid #334155; margin: 10px 0;'>", unsafe_allow_html=True)
 
 def valider_code_acces():
     code = st.session_state.cle_authentification.strip()
@@ -212,7 +244,7 @@ def valider_code_acces():
         st.sidebar.error("❌ Signature ou clé d'authentification invalide.")
 
 st.sidebar.text_input("Clé d'activation (Licence Mensuelle)", type="password", key="cle_authentification", on_change=valider_code_acces)
-st.sidebar.markdown("---")
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
 mode_affichage = st.sidebar.selectbox("Finition cosmétique :", ["Standard (Épuré)", "Jeux Vidéo (RPG)", "Custom (👑)"])
 
 grade = "👑 MEMBRE EMPIRE PRO" if st.session_state.forfait == "Pro" else ("⚔️ MARCHAND STARTER" if st.session_state.forfait == "Starter" else "🥚 INVITÉ SANS LICENCE")
@@ -260,7 +292,7 @@ col3.metric(label="⚡ Licence Active", value=f"Plan {st.session_state.forfait}"
 st.markdown("---")
 
 # --- INITIALISATION DES ONGLETS PUBLICS ET PRIVÉS ---
-# Intégration de tes nouveaux noms d'onglets pour remettre B3 à sa place !
+# Le marché et forum est extrait pour être visible par tout le monde !
 if not st.session_state.compte_actif:
     tab1, = st.tabs(["🛍️ B1: Marché & Forum"])
 else:
@@ -384,6 +416,14 @@ with tab2:
             placeholder="Ex: Mes chaises sont strictement en plastique rigide bleu, elles ne sont PAS pliables et mesurent 80cm de haut. Soyez précis pour guider l'IA.",
             key="details_reels_ia"
         )
+
+        # Logistique de sourcing explicite pour guider le livreur réseau local
+        st.markdown("#### 🚲 Logistique d'Approvisionnement pour les Livreurs")
+        source_globale_achat = st.text_input(
+            "Où le livreur doit-il aller acheter ces produits ? (Lien web exact, adresse ou enseigne locale)", 
+            placeholder="Ex: Bureau en Gros de la rue Sherbrooke ou lien BestBuy.ca/...",
+            key="source_logistique_achat"
+        )
         
         mode_creation = st.radio("Méthode de rédaction du catalogue :", ["🤖 Génération Automatique par IA (10 Produits)", "🛠️ Configuration Manuelle Assistée"])
         liste_parametres_produits = []
@@ -403,14 +443,15 @@ with tab2:
                 liste_parametres_produits.append({"nom": nom_p, "prix": prix_p})
 
         if st.button("🚀 Forger l'infrastructure de la boutique"):
-            if nom_shop and courriel_interac_vendeur and details_reels.strip():
+            if nom_shop and courriel_interac_vendeur and details_reels.strip() and source_globale_achat.strip():
                 with st.spinner("L'IA applique le protocole de vérité et structure ton catalogue commercial..."):
                     
                     prefixe_interac = f"💵 **Paiement 100% Sécurisé : Virement Interac à : {courriel_interac_vendeur}**\n*Note : Entrez le numéro de votre commande dans la description du virement.*\n\n---\n"
                     
-                    # R&D Prompt de cadrage strict anti-hallucination
+                    # R&D Prompt de cadrage strict anti-hallucination + Injection de la source d'achat
                     prompt_catalogue = f"""Tu es un copywriter de génie spécialisé dans le commerce de type : {type_commerce}.
                     Rédige un catalogue pour la boutique '{nom_shop}' axée sur la thématique '{niche_shop}'.
+                    Tu dois obligatoirement ajouter à la toute fin de CHAQUE fiche produit la mention exacte suivante pour notre logistique interne : 'Source : {source_globale_achat}'
                     
                     ⚠️ CONSIGNE DE SÉCURITÉ ET DE VÉRITÉ CRITIQUE :
                     Tu dois te baser UNIQUEMENT et STRICTEMENT sur les détails réels fournis par l'utilisateur ci-dessous.
@@ -422,9 +463,10 @@ with tab2:
                     Génère EXACTEMENT {int(nombre_de_produits)} fiches de produits. Pour chaque produit, utilise STRICTEMENT cette structure en Markdown :
                     
                     ### 📦 [Nom du produit]
-                    * **Description** : [Description commerciale percutante et 100% VRAIE d'environ 3 phrases]
+                    * **Description** : [Description commerciale percutante et 100% VRAIE d'environ 3 sentences]
                     * **⚡ Pourquoi ce produit est unique** : [Argument de vente honnête basé sur les faits fournis]
                     * **Prix** : [Insérer ici le prix correspondant] $
+                    * **Source** : {source_globale_achat}
                     
                     Ne mets aucune introduction ni conclusion, écris seulement le Markdown."""
                     
@@ -439,7 +481,7 @@ with tab2:
                     else:
                         st.error("❌ Ce nom de boutique est déjà réservé sur le serveur central.")
             else:
-                st.error("⚠️ Veuillez remplir le nom de l'enseigne, votre courriel Interac et fournir les détails réels des produits.")
+                st.error("⚠️ Veuillez remplir le nom de l'enseigne, votre courriel Interac, la source d'approvisionnement logistique et fournir les détails réels des produits.")
     with tab3:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops:
@@ -471,7 +513,7 @@ with tab2:
                     <span style='font-size: 13px; color: #cbd5e1;'>
                     1. <b>Encaisser le virement</b> : Valide sur ton compte Desjardins que le client t'a payé le total par Interac.<br>
                     2. <b>Déléguer l'achat et la course</b> : Ne sors pas ta carte de crédit. Assigne un livreur ci-dessous.<br>
-                    3. <b>Remboursement après livraison</b> : Le livreur achète le produit avec ses propres moyens sécurisés. Quand il te le livre ou le donne au client, tu lui renvoies le coût du produit + sa prime par virement Interac direct.
+                    3. <b>Remboursement après livraison</b> : Le livreur va voir la source d'achat, utilise ses propres moyens, achète l'article et s'occupe de tout. Quand il te le donne ou le livre au client, tu lui renvoies le coût du produit + sa prime par virement Interac direct.
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
@@ -489,7 +531,7 @@ with tab2:
                             <span style='font-size: 11px; color: #94a3b8;'>📅 Commande reçue le : {c_date}</span><br>
                             👤 <b>Acheteur :</b> {c_nom} <br>
                             📍 <b>ADRESSE DU CLIENT :</b> {c_adresse} <br>
-                            📦 <b>Contenu du panier :</b> {c_articles} <br>
+                            📦 <b>Contenu et Infos de sourcing livreur :</b> {c_articles} <br>
                             💰 <b>Total collecté du client :</b> {c_total} $
                         </div>
                         """, unsafe_allow_html=True)
@@ -509,7 +551,7 @@ with tab2:
 
     with tab4:
         st.header("🚲 Hub Logistique : Espace et Recrutement des Livreurs")
-        st.markdown("Deviens coursier pour le réseau. Achète les commandes demandées par les boutiques avec tes propres moyens (fonds de roulement), livre-les localement, et fais-toi rembourser instantanément avec une prime de 5$ à 20$.")
+        st.markdown("Deviens coursier pour le réseau. L'application te dit exactement **où acheter le produit** (Lien web ou Magasin local). Tu l'achètes de façon sécurisée avec tes propres moyens (fonds de roulement), tu le livres localement, et tu te fais rembourser instantanément avec une prime de 5$ à 20$.")
         
         sub_l1, sub_l2 = st.tabs(["📝 S'inscrire comme Livreur", "📦 Tableau des Missions d'Achat & Livraison"])
         
@@ -540,15 +582,15 @@ with tab2:
                     st.markdown(f"""
                     <div style='background-color: #141923; padding: 15px; border-radius: 8px; border-left: 4px solid #eab308; margin-bottom: 10px;'>
                         <span style='color: #eab308; font-weight: bold;'>🏬 Boutique émettrice : {m_boutique.upper()}</span><br>
-                        📦 <b>Article à acheter chez le fournisseur :</b> {m_article}<br>
-                        💵 <b>Prix d'achat estimé (À avancer) :</b> {m_total} $<br>
+                        🎯 <b>PRODUIT ET ADRESSE DU MAGASIN / LIEN POUR L'ACHETER :</b> <span style='color: #00ffcc;'>{m_article}</span><br>
+                        💵 <b>Prix de remboursement garanti (À avancer) :</b> {m_total} $<br>
                         📍 <b>Adresse de livraison finale :</b> {m_adresse}<br>
                         👤 <b>Nom du destinataire :</b> {m_client}
                     </div>
                     """, unsafe_allow_html=True)
                     
                     if st.button(f"🚲 Accepter la mission et acheter l'article pour #{m_id}", key=f"accept_m_{m_id}"):
-                        st.info(f"✅ Mission acceptée ! Prends contact avec la boutique `{m_boutique}`. Achète le produit `{m_article}`. Une fois livré à `{m_client}`, tu toucheras ton remboursement de {m_total}$ + ta prime de livraison par Interac.")
+                        st.info(f"✅ Mission acceptée ! Prends contact avec la boutique `{m_boutique}`. Utilisez l'adresse ou le lien ci-dessus pour acheter le produit. Une fois livré à `{m_client}`, tu toucheras ton remboursement de {m_total}$ + ta prime de livraison par Interac.")
     with tab5:
         st.header("🕵️‍♂️ Radar Espion Local")
         mot_espion = st.text_input("Saisissez un type d'article, de service ou une tendance à auditer :", key="audit_mot_espion")
@@ -584,11 +626,11 @@ with tab2:
                 if not liste_shops:
                     st.warning("Aucune boutique disponible pour implanter l'IA.")
                 else:
-                    noms_shops_chat = [s for s in liste_shops]
+                    noms_shops_chat = [s[0] for s in liste_shops]
                     shop_nom_chat = st.selectbox("Sélectionnez la boutique à équiper d'un Chatbot :", noms_shops_chat, key="select_shop_chat")
                     
                     if st.button("⚡ Greffer l'Assistant commercial IA", key="btn_greffe_chatbot"):
-                        shop_data = next((s for s in liste_shops if s == shop_nom_chat), None)
+                        shop_data = next((s for s in liste_shops if s[0] == shop_nom_chat), None)
                         if shop_data:
                             nom_s, niche_s, contenu_s, couleur_s, prix_s = shop_data
                             if "🤖 Agent Actif" not in contenu_s:
@@ -621,7 +663,7 @@ with tab2:
             if not liste_shops:
                 st.warning("Aucune boutique disponible pour le re-branding.")
             else:
-                noms_shops_branding = [s for s in liste_shops]
+                noms_shops_branding = [s[0] for s in liste_shops]
                 shop_nom_branding = st.selectbox("Sélectionnez la boutique à modifier :", noms_shops_branding, key="sb_select")
                 nouveau_fond = st.text_input("Collez l'URL de votre image ou votre couleur hexadécimale :", "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)", key="input_fond_custom")
                 
@@ -634,12 +676,18 @@ with tab2:
                     st.success(f"🎨 L'ambiance visuelle de '{shop_nom_branding}' a été mise à jour !")
                     st.rerun()
 
-    # --- INJECTION DU MODULE DE REVENU PASSIF MICRO-SAAS ---
+    # --- INJECTION DU MODULE DE REVENU PASSIF MICRO-SAAS (Toujours visible pour les comptes actifs)
     st.markdown("---")
-    st.subheader("💎 Rente Réelle : Déploiement de Logiciels Micro-SaaS")
+    st.header("💎 Rente Réelle : Déploiement de Logiciels Micro-SaaS")
     if st.session_state.forfait != "Pro":
-        st.markdown("<p>🔒 Le système de génération de licences logicielles automatisées nécessite l'infrastructure Pro.</p>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style='background-color: #1a1c23; padding: 25px; border-radius: 12px; border: 1px solid #00ffcc; text-align: center;'>
+            <h3>🔒 MODULE DE REVENU PASSIF VERROUILLÉ</h3>
+            <p>Le système de génération de licences logicielles automatisées nécessite l'infrastructure Pro.</p>
+        </div>
+        """, unsafe_allow_html=True)
     else:
+        st.subheader("🚀 Forger une Application Clone (Générateur de Rente)")
         st.markdown("Créez instantanément une page publique d'abonnement pour vendre votre propre application en marque blanche.")
         nom_logiciel_vente = st.text_input("Nom de l'application logicielle à vendre :", "SaaS Automate Pro", key="input_nom_saas")
         tarif_SaaS = st.number_input("Prix de l'abonnement mensuel ($) :", min_value=10.0, value=100.0, step=10.0, key="input_prix_saas")
