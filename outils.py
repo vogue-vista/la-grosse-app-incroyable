@@ -12,20 +12,11 @@ def obtenir_connexion():
 def initialiser_base_de_donnees():
     conn = obtenir_connexion()
     cursor = conn.cursor()
-    
-    # Table des boutiques liée au compte propriétaire (cle_proprietaire)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS boutiques (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            nom TEXT UNIQUE, 
-            niche TEXT, 
-            contenu TEXT, 
-            couleur TEXT, 
-            prix REAL DEFAULT 0.0,
-            cle_proprietaire TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT UNIQUE, niche TEXT, contenu TEXT, couleur TEXT, prix REAL DEFAULT 0.0, cle_proprietaire TEXT
         )
     """)
-    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS abonnements (
             id INTEGER PRIMARY KEY AUTOINCREMENT, nom_plateforme TEXT, nom_client TEXT, email_client TEXT, tarif REAL, statut TEXT DEFAULT 'Actif', date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -93,7 +84,7 @@ def ajouter_boutique(nom, niche, contenu, prix, cle_proprietaire, couleur="#f8fa
             INSERT INTO boutiques (nom, niche, contenu, couleur, prix, cle_proprietaire) 
             VALUES (?, ?, ?, ?, ?, ?)
         """, (nom, niche, contenu, couleur, prix, cle_proprietaire))
-        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Vitrine en ligne : '{nom}' a été déployée et sécurisée sur votre compte !",))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🏬 Vitrine en ligne : '{nom}' a été déployée !",))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -199,19 +190,11 @@ def recuperer_notifications():
     if not res:
         return ["🟢 Central System connecté.", "📡 Chiffrement local SQLite validé.", "🤖 IA Groq en ligne."]
     return [r[0] for r in res]
-    
-    def recuperer_abonnements():
-    """
-    Extrait l'intégralité du grand livre comptable des contrats logiciels actifs sur le serveur.
-    """
-    conn = sqlite3.connect("empire_v2.db", timeout=30, check_same_thread=False)
+
+def recuperer_abonnements():
+    conn = obtenir_connexion()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT nom_plateforme, nom_client, email_client, tarif, statut, date_inscription 
-        FROM abonnements 
-        ORDER BY id DESC
-    """)
+    cursor.execute("SELECT nom_plateforme, nom_client, email_client, tarif, statut, date_inscription FROM abonnements ORDER BY id DESC")
     res = cursor.fetchall()
     conn.close()
     return res
-
