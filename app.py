@@ -340,7 +340,7 @@ with tab1:
                 for p_idx, bloc in enumerate(blocs[1:]):
                     if bloc.strip():
                         lignes_bloc = bloc.split("\n")
-                        nom_produit = lignes_bloc.strip()
+                        nom_produit = lignes_bloc[0].strip() if lignes_bloc else "Article sans nom"
                         if recherche_client and (recherche_client not in nom_produit.lower() and recherche_client not in bloc.lower()):
                             continue
                             
