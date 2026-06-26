@@ -199,3 +199,19 @@ def recuperer_notifications():
     if not res:
         return ["🟢 Central System connecté.", "📡 Chiffrement local SQLite validé.", "🤖 IA Groq en ligne."]
     return [r[0] for r in res]
+    
+    def recuperer_abonnements():
+    """
+    Extrait l'intégralité du grand livre comptable des contrats logiciels actifs sur le serveur.
+    """
+    conn = sqlite3.connect("empire_v2.db", timeout=30, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT nom_plateforme, nom_client, email_client, tarif, statut, date_inscription 
+        FROM abonnements 
+        ORDER BY id DESC
+    """)
+    res = cursor.fetchall()
+    conn.close()
+    return res
+
