@@ -5,7 +5,7 @@ import random
 
 # Initialisation lourde et configuration de la fenêtre du navigateur web Streamlit
 st.set_page_config(
-    page_title="Empire Tycoon Central Terminal v2.5", 
+    page_title="Empire Tycoon Central Terminal v3.0", 
     page_icon="👑", 
     layout="wide", 
     initial_sidebar_state="expanded"
@@ -31,7 +31,7 @@ if "shop" in query_params:
     liste_shops_publics = outils.recuperer_boutiques()
     boutique_trouvee = None
     
-    # Parcours sécurisé de l'infrastructure de stockage pour localiser la vitrine demandée
+    # Scan complet et sécurisé de la base de données pour localiser la boutique demandée
     for s in liste_shops_publics:
         if s[0].lower().replace(" ", "-") == shop_public.lower():
             boutique_trouvee = s
@@ -118,11 +118,20 @@ if "shop" in query_params:
                     else:
                         prix_chiffre = prix_bdd_propre
                     
+                    # Extraction masquée de la source ou du lien réel pour le livreur
+                    trouver_source = re.search(r"Source\s*:\s*(.*)", bloc, re.IGNORECASE)
+                    source_produit = trouver_source.group(1).strip() if trouver_source else "Magasin local ou en ligne"
+                    
                     st.markdown(f"### 📦 {bloc}", unsafe_allow_html=True)
                     
                     # Bouton d'ajout dynamique rattaché à chaque produit du catalogue
                     if st.button(f"🛒 Ajouter à ma sélection : {nom_produit}", key=f"btn_ajout_{idx}"):
-                        st.session_state.panier_client.append({"nom": nom_produit, "prix": prix_chiffre, "vendeur": nom})
+                        st.session_state.panier_client.append({
+                            "nom": nom_produit, 
+                            "prix": prix_chiffre, 
+                            "vendeur": nom,
+                            "source": source_produit
+                        })
                         st.toast(f"✅ {nom_produit} a été ajouté à votre panier !", icon="🛒")
         else:
             st.markdown(contenu_client, unsafe_allow_html=True)
@@ -137,7 +146,7 @@ if "shop" in query_params:
             total_commande = 0.0
             st.markdown("<div class='bloc-panier'>", unsafe_allow_html=True)
             for idx_p, item in enumerate(st.session_state.panier_client):
-                col_item1, col_item2 = st.columns([3, 1])
+                col_item1, col_item2 = st.columns(2)
                 with col_item1:
                     st.write(f"🔹 **{item['nom']}** — {item['prix']} $")
                 with col_item2:
@@ -147,7 +156,7 @@ if "shop" in query_params:
                 total_commande += item['prix']
             
             st.markdown(f"### 💵 Montant Total : {round(total_commande, 2)} $")
-            st.caption("💡 Logistique de sécurité : Un livreur indépendant de notre réseau prendra en charge l'achat et la livraison locale de votre commande.")
+            st.caption("💡 Logistique de sécurité : Un livreur indépendant de notre réseau prendra en charge l'achat réel sur la plateforme source avant de s'occuper de votre livraison locale.")
             if st.button("🧹 Vider complètement le panier"):
                 st.session_state.panier_client = []
                 st.rerun()
@@ -163,18 +172,18 @@ if "shop" in query_params:
                 texte_bouton = f"🔥 Confirmer et commander ({round(total_commande, 2)} $)"
                 if st.form_submit_button(texte_bouton):
                     if nom_client and adresse_client:
-                        # Dispatch de chaque article du panier en base de données
+                        # Dispatch de chaque article du panier en base de données avec sa source logistique web réelle
                         for item in st.session_state.panier_client:
                             outils.enregistrer_commande_interne(
                                 nom_boutique=item.get('vendeur', nom),
                                 nom_client=nom_client,
                                 adresse=adresse_client,
-                                commande=item['nom'],
+                                commande=f"{item['nom']} | 🔗 Source d'achat livreur : {item.get('source', 'À voir avec le vendeur')}",
                                 total=item['prix']
                             )
                         st.session_state.panier_client = []
                         st.balloons()
-                        st.success("🎉 Parfait ! Votre commande a été transmise avec succès au tableau de bord du commerçant.")
+                        st.success("🎉 Parfait ! Votre commande a été transmise. Le livreur dispose désormais du vrai lien pour l'acheter.")
                         st.rerun()
                     else:
                         st.error("⚠️ Formulaire incomplet : Veuillez renseigner votre nom complet ainsi que l'adresse de livraison.")
@@ -268,9 +277,9 @@ else:
 
 st.markdown("### ⚡ Flux d'Activité Réseau")
 notifs = outils.recuperer_notifications()
-notif_1 = notifs[0] if (len(notifs) > 0 and isinstance(notifs, list)) else ""
-notif_2 = notifs[1] if (len(notifs) > 1 and isinstance(notifs, list)) else ""
-notif_3 = notifs[2] if (len(notifs) > 2 and isinstance(notifs, list)) else ""
+notif_1 = notifs if (len(notifs) > 0 and isinstance(notifs, list)) else ""
+notif_2 = notifs if (len(notifs) > 1 and isinstance(notifs, list)) else ""
+notif_3 = notifs if (len(notifs) > 2 and isinstance(notifs, list)) else ""
 
 st.markdown(f"""
 <div style='background-color: #1e293b; padding: 15px; border-radius: 10px; border-left: 5px solid #00ffcc; margin-bottom: 25px;'>
@@ -331,7 +340,7 @@ with tab1:
                 for p_idx, bloc in enumerate(blocs[1:]):
                     if bloc.strip():
                         lignes_bloc = bloc.split("\n")
-                        nom_produit = lignes_bloc[0].strip()
+                        nom_produit = lignes_bloc.strip()
                         if recherche_client and (recherche_client not in nom_produit.lower() and recherche_client not in bloc.lower()):
                             continue
                             
@@ -386,7 +395,7 @@ if not st.session_state.compte_actif:
     st.stop()
 with tab2:
     st.header("🏬 Concepteur de Boutique Multi-Commerce")
-    st.markdown("Propulsez une vitrine e-commerce unique. Configurez les détails réels pour empêcher l'IA d'inventer de fausses caractéristiques.")
+    st.markdown("Propulsez une vitrine e-commerce unique. Plus besoin de rédiger de descriptions : l'IA va automatiquement chercher de vrais produits sur le web, extraire les informations officielles et lier les sources d'achat réelles pour vos livreurs.")
     
     # Sécurité anti-abus pour protéger tes clés API et ton budget de créateur
     conn = outils.obtenir_connexion()
@@ -399,41 +408,38 @@ with tab2:
         st.error("⚠️ Limite atteinte : Le plan Starter est bridé à un maximum de 3 boutiques pour protéger l'infrastructure API. Passez au plan Pro pour un déploiement illimité.")
     else:
         nom_shop = st.text_input("Nom de l'enseigne commerciale :", "Mon Commerce Élite", key="design_nom_shop")
-        niche_shop = st.text_input("Thématique / Niche :", "Éléments et accessoires de style", key="design_niche_shop")
+        niche_shop = st.text_input("Thématique / Niche spécifique :", "Éléments et accessoires de style Cyberpunk", key="design_niche_shop")
         courriel_interac_vendeur = st.text_input("🚀 Votre courriel Interac (Pour recevoir tes gains réels) :", "ton-email@banque.com")
         
-        # Choix du type de commerce (Fin du tout-dropshipping)
+        # Choix du type de commerce
         type_commerce = st.selectbox("Type de modèle d'affaires :", [
             "📦 Objets Réels & Artisanat Local (Livrés en personne ou par Postes Canada)", 
             "💻 Services Numériques & Prestations (Montage, Coaching, Logo, Aide)",
             "📚 Infoproduits & Guides PDF (Formations, E-books)"
         ])
         
-        # FORMULAIRE DE PRÉCISION STRICT (Anti-mensonge de l'IA)
-        st.markdown("#### 🛡️ Cadrage Véridique des Produits")
-        details_reels = st.text_area(
-            "Décris les caractéristiques exactes, matériaux, limites et détails réels de tes produits :", 
-            placeholder="Ex: Mes chaises sont strictement en plastique rigide bleu, elles ne sont PAS pliables et mesurent 80cm de haut. Soyez précis pour guider l'IA.",
-            key="details_reels_ia"
-        )
-
-        # Logistique de sourcing explicite pour guider le livreur réseau local
-        st.markdown("#### 🚲 Logistique d'Approvisionnement pour les Livreurs")
-        source_globale_achat = st.text_input(
-            "Où le livreur doit-il aller acheter ces produits ? (Lien web exact, adresse ou enseigne locale)", 
-            placeholder="Ex: Bureau en Gros de la rue Sherbrooke ou lien BestBuy.ca/...",
-            key="source_logistique_achat"
-        )
+        mode_creation = st.radio("Méthode de déploiement de l'infrastructure :", ["🤖 100% Automatique (IA & Scraping Web Autonome)", "🛠️ Configuration Manuelle Assistée"])
         
-        mode_creation = st.radio("Méthode de rédaction du catalogue :", ["🤖 Génération Automatique par IA (10 Produits)", "🛠️ Configuration Manuelle Assistée"])
+        # Initialisation des variables logistiques pour l'IA
+        url_source_scraping = ""
         liste_parametres_produits = []
         
-        if mode_creation == "🤖 Génération Automatique par IA (10 Produits)":
-            st.info("⚡ L'IA va structurer un catalogue de 10 produits optimisés respectant STRICTEMENT tes détails réels.")
-            nombre_de_produits = 10
+        if mode_creation == "🤖 100% Automatique (IA & Scraping Web Autonome)":
+            st.info("⚡ Mode Élite : Entrez un site web ou une page de référence (ex: boutique concurrente, catalogue de grossiste). L'IA va scanner la page, extraire les vrais produits et copier leurs liens officiels pour blinder la logistique de vos livreurs.")
+            url_source_scraping = st.text_input("URL cible à analyser et cloner (Ex: amazon.ca/chaisses ou un site de niche) :", placeholder="https://example.com")
             prix_par_defaut = st.number_input("Prix de vente moyen par produit ($) :", min_value=1.0, value=39.99, step=5.0)
         else:
+            # Mode manuel classique avec spécification de la source d'achat par ligne
+            st.markdown("#### ⚙️ Configuration Manuelle Assistée")
             nombre_de_produits = st.number_input("Combien de produits voulez-vous intégrer ?", min_value=1, max_value=20, value=3, step=1)
+            
+            st.markdown("#### 🛡️ Cadrage de vérité")
+            details_reels = st.text_area(
+                "Décris les caractéristiques exactes, matériaux, et détails de tes produits :", 
+                placeholder="Ex: Mes chaises sont strictement en plastique rigide bleu, elles ne sont PAS pliables.",
+                key="details_reels_ia"
+            )
+            
             col_p1, col_p2 = st.columns(2)
             for i in range(int(nombre_de_produits)):
                 with col_p1:
@@ -443,36 +449,60 @@ with tab2:
                 liste_parametres_produits.append({"nom": nom_p, "prix": prix_p})
 
         if st.button("🚀 Forger l'infrastructure de la boutique"):
-            if nom_shop and courriel_interac_vendeur and details_reels.strip() and source_globale_achat.strip():
-                with st.spinner("L'IA applique le protocole de vérité et structure ton catalogue commercial..."):
+            if nom_shop and courriel_interac_vendeur:
+                with st.spinner("Initialisation des routeurs logistiques et couplage avec l'IA..."):
                     
                     prefixe_interac = f"💵 **Paiement 100% Sécurisé : Virement Interac à : {courriel_interac_vendeur}**\n*Note : Entrez le numéro de votre commande dans la description du virement.*\n\n---\n"
                     
-                    # R&D Prompt de cadrage strict anti-hallucination + Injection de la source d'achat
-                    prompt_catalogue = f"""Tu es un copywriter de génie spécialisé dans le commerce de type : {type_commerce}.
-                    Rédige un catalogue pour la boutique '{nom_shop}' axée sur la thématique '{niche_shop}'.
-                    Tu dois obligatoirement ajouter à la toute fin de CHAQUE fiche produit la mention exacte suivante pour notre logistique interne : 'Source : {source_globale_achat}'
-                    
-                    ⚠️ CONSIGNE DE SÉCURITÉ ET DE VÉRITÉ CRITIQUE :
-                    Tu dois te baser UNIQUEMENT et STRICTEMENT sur les détails réels fournis par l'utilisateur ci-dessous.
-                    Il est FORMELLEMENT INTERDIT d'inventer des matériaux, des fonctionnalités ou des options fausses. Si l'information n'est pas mentionnée, n'en parle pas. Ne mens jamais sur les caractéristiques.
-                    
-                    DÉTAILS RÉELS À RESPECTER COMPLÈTEMENT : 
-                    {details_reels}
-                    
-                    Génère EXACTEMENT {int(nombre_de_produits)} fiches de produits. Pour chaque produit, utilise STRICTEMENT cette structure en Markdown :
-                    
-                    ### 📦 [Nom du produit]
-                    * **Description** : [Description commerciale percutante et 100% VRAIE d'environ 3 sentences]
-                    * **⚡ Pourquoi ce produit est unique** : [Argument de vente honnête basé sur les faits fournis]
-                    * **Prix** : [Insérer ici le prix correspondant] $
-                    * **Source** : {source_globale_achat}
-                    
-                    Ne mets aucune introduction ni conclusion, écris seulement le Markdown."""
-                    
-                    prix_stockage = prix_par_defaut if mode_creation == "🤖 Génération Automatique par IA (10 Produits)" else (liste_parametres_produits[0]["prix"] if liste_parametres_produits else 29.99)
-                    
-                    catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.5)
+                    if mode_creation == "🤖 100% Automatique (IA & Scraping Web Autonome)":
+                        if not url_source_scraping.strip():
+                            st.error("⚠️ Erreur : Veuillez fournir une URL cible pour activer les algorithmes de scraping autonome.")
+                            st.stop()
+                            
+                        with st.spinner("📡 Extraction des vraies données du site cible via Scrape.do..."):
+                            texte_scrape = outils.executer_scraping_real(url_source_scraping)
+                            
+                        with st.spinner("🤖 L'IA analyse la fiche web réelle et structure les liens de sourcing livreur..."):
+                            prompt_catalogue = f"""Tu es un copywriter et ingénieur logistique de génie spécialisé dans le commerce de type : {type_commerce}.
+                            Analyse les données brutes suivantes issues d'un scraping web réel :
+                            ---
+                            {texte_scrape}
+                            ---
+                            Rédige un catalogue e-commerce complet de EXACTEMENT 5 produits inspirés de cette page pour la boutique '{nom_shop}' ({niche_shop}).
+                            
+                            ⚠️ CONSIGNE LOGISTIQUE ET DE VÉRITÉ CRITIQUE :
+                            Tu dois te baser UNIQUEMENT sur les caractéristiques réelles trouvées dans le texte scrapé. Ne mens jamais. N'invente aucun matériau.
+                            À la fin de CHAQUE fiche produit, ajoute impérativement la mention exacte suivante pour que le livreur sache où cliquer : 'Source : {url_source_scraping}'
+                            
+                            Utilise STRICTEMENT cette structure Markdown pour chaque produit :
+                            ### 📦 [Insérer le nom réel du produit trouvé]
+                            * **Description** : [Description commerciale fidèle et 100% vraie basée sur le texte scrapé]
+                            * **⚡ Pourquoi ce produit est unique** : [Argument de vente honnête tiré des faits réels]
+                            * **Prix** : {prix_par_defaut} $
+                            * **Source** : {url_source_scraping}
+                            
+                            Ne mets aucune introduction ni conclusion, écris seulement le Markdown."""
+                            prix_stockage = prix_par_defaut
+                    else:
+                        # Traitement du mode manuel
+                        if not details_reels.strip():
+                            st.error("⚠️ Veuillez renseigner le formulaire de caractéristiques réelles pour le mode manuel.")
+                            st.stop()
+                            
+                        prompt_catalogue = f"""Tu es un copywriter e-commerce honnête. Rédige un catalogue de fiches descriptives pour la boutique '{nom_shop}' ({niche_shop}).
+                        DÉTAILS RÉELS STRICTS À RESPECTER SANS INVENTER DE MENSONGES : {details_reels}
+                        
+                        Génère le rendu au format Markdown en utilisant STRICTEMENT cette mise en page pour chaque produit :
+                        ### 📦 [Nom exact du produit]
+                        * **Description** : [Description attractive d'environ 3 phrases respectant la vérité]
+                        * **⚡ Pourquoi ce produit est unique** : [Argumentaire honnête]
+                        * **Prix** : [Insérer le prix correspondant] $
+                        * **Source** : Magasin local choisi par le vendeur
+                        """
+                        prix_stockage = liste_parametres_produits[0]["prix"] if liste_parametres_produits else 29.99
+
+                    # Appel du modèle Groq Llama-3.1
+                    catalogue_markdown = outils.appeler_groq(prompt_catalogue, temperature=0.4)
                     contenu_final_interac = prefixe_interac + catalogue_markdown
                     
                     if outils.ajouter_boutique(nom_shop, niche_shop, contenu_final_interac, prix_stockage, couleur="#f8fafc"):
@@ -481,7 +511,7 @@ with tab2:
                     else:
                         st.error("❌ Ce nom de boutique est déjà réservé sur le serveur central.")
             else:
-                st.error("⚠️ Veuillez remplir le nom de l'enseigne, votre courriel Interac, la source d'approvisionnement logistique et fournir les détails réels des produits.")
+                st.error("⚠️ Veuillez remplir le nom de l'enseigne et votre courriel Interac.")
     with tab3:
         st.header("🌐 Vos Serveurs d'Hébergement Actifs")
         if not liste_shops:
@@ -513,7 +543,7 @@ with tab2:
                     <span style='font-size: 13px; color: #cbd5e1;'>
                     1. <b>Encaisser le virement</b> : Valide sur ton compte Desjardins que le client t'a payé le total par Interac.<br>
                     2. <b>Déléguer l'achat et la course</b> : Ne sors pas ta carte de crédit. Assigne un livreur ci-dessous.<br>
-                    3. <b>Remboursement après livraison</b> : Le livreur va voir la source d'achat, utilise ses propres moyens, achète l'article et s'occupe de tout. Quand il te le donne ou le livre au client, tu lui renvoies le coût du produit + sa prime par virement Interac direct.
+                    3. <b>Remboursement après livraison</b> : Le livreur va voir la source d'achat automatisée par l'IA (vrais liens réels), utilise ses propres moyens, achète l'article et s'occuper de tout. Quand il te le donne ou le livre au client, tu lui renvoies le coût du produit + sa prime par virement Interac direct.
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
@@ -531,7 +561,7 @@ with tab2:
                             <span style='font-size: 11px; color: #94a3b8;'>📅 Commande reçue le : {c_date}</span><br>
                             👤 <b>Acheteur :</b> {c_nom} <br>
                             📍 <b>ADRESSE DU CLIENT :</b> {c_adresse} <br>
-                            📦 <b>Contenu et Infos de sourcing livreur :</b> {c_articles} <br>
+                            📦 <b>Contenu et Vrais liens de sourcing IA pour le livreur :</b> {c_articles} <br>
                             💰 <b>Total collecté du client :</b> {c_total} $
                         </div>
                         """, unsafe_allow_html=True)
@@ -542,7 +572,7 @@ with tab2:
                             
                             if st.button("🚀 Confier l'achat et la livraison au coursier", key=f"btn_livreur_{nom}_{idx_c}"):
                                 if nom_livreur_choisi.strip():
-                                    st.success(f"📦 Ordre envoyé ! **{nom_livreur_choisi}** va acheter le produit et s'occuper de tout. Tu le rembourseras de {c_total}$ + {prime_livraison}$ de prime une fois livré.")
+                                    st.success(f"📦 Ordre envoyé ! **{nom_livreur_choisi}** va acheter le produit et s'occuper de tout grâce au vrai lien d'achat. Tu le rembourseras de {c_total}$ + {prime_livraison}$ de prime une fois livré.")
                                     st.rerun()
                 
                 st.markdown("---")
@@ -551,7 +581,7 @@ with tab2:
 
     with tab4:
         st.header("🚲 Hub Logistique : Espace et Recrutement des Livreurs")
-        st.markdown("Deviens coursier pour le réseau. L'application te dit exactement **où acheter le produit** (Lien web ou Magasin local). Tu l'achètes de façon sécurisée avec tes propres moyens (fonds de roulement), tu le livres localement, et tu te fais rembourser instantanément avec une prime de 5$ à 20$.")
+        st.markdown("Deviens coursier pour le réseau. L'application te donne instantanément **le vrai lien ou magasin extrait par l'IA** pour acheter le produit. Tu l'achètes de façon sécurisée avec tes propres moyens (fonds de roulement), tu le livres localement, et tu te fais rembourser instantanément avec une prime de 5$ à 20$.")
         
         sub_l1, sub_l2 = st.tabs(["📝 S'inscrire comme Livreur", "📦 Tableau des Missions d'Achat & Livraison"])
         
@@ -582,7 +612,7 @@ with tab2:
                     st.markdown(f"""
                     <div style='background-color: #141923; padding: 15px; border-radius: 8px; border-left: 4px solid #eab308; margin-bottom: 10px;'>
                         <span style='color: #eab308; font-weight: bold;'>🏬 Boutique émettrice : {m_boutique.upper()}</span><br>
-                        🎯 <b>PRODUIT ET ADRESSE DU MAGASIN / LIEN POUR L'ACHETER :</b> <span style='color: #00ffcc;'>{m_article}</span><br>
+                        🎯 <b>PRODUIT ET VRAI LIEN RECHERCHÉ PAR L'IA POUR L'ACHETER :</b> <span style='color: #00ffcc;'>{m_article}</span><br>
                         💵 <b>Prix de remboursement garanti (À avancer) :</b> {m_total} $<br>
                         📍 <b>Adresse de livraison finale :</b> {m_adresse}<br>
                         👤 <b>Nom du destinataire :</b> {m_client}
@@ -590,7 +620,7 @@ with tab2:
                     """, unsafe_allow_html=True)
                     
                     if st.button(f"🚲 Accepter la mission et acheter l'article pour #{m_id}", key=f"accept_m_{m_id}"):
-                        st.info(f"✅ Mission acceptée ! Prends contact avec la boutique `{m_boutique}`. Utilisez l'adresse ou le lien ci-dessus pour acheter le produit. Une fois livré à `{m_client}`, tu toucheras ton remboursement de {m_total}$ + ta prime de livraison par Interac.")
+                        st.info(f"✅ Mission acceptée ! Prends contact avec la boutique `{m_boutique}`. Utilisez le vrai lien fourni ci-dessus pour acheter le produit officiel. Une fois livré à `{m_client}`, tu toucheras ton remboursement de {m_total}$ + ta prime de livraison par Interac.")
     with tab5:
         st.header("🕵️‍♂️ Radar Espion Local")
         mot_espion = st.text_input("Saisissez un type d'article, de service ou une tendance à auditer :", key="audit_mot_espion")
@@ -600,7 +630,7 @@ with tab2:
                 st.info(outils.appeler_groq(prompt_audit))
 
     with tab6:
-        st.header("👑 Laboratoire de R&D : Outils Avancés Élite")
+        st.header("👑 Laboratoire de R&D : Outils Avancés Élite (💡 B3)")
         if st.session_state.forfait != "Pro":
             st.markdown("""
             <div style='background-color: #241442; padding: 25px; border-radius: 12px; border: 2px solid #8a2be2; text-align: center;'>
@@ -650,15 +680,16 @@ with tab2:
                         st.markdown(outils.appeler_groq(prompt_num))
 
     with tab7:
-        st.header("🎨 Studio Branding & Identité Visuelle")
+        st.header("🎨 Studio Branding & Créateur d'Abonnement SaaS Pro")
         if st.session_state.forfait != "Pro":
             st.markdown("""
             <div style='background-color: #1e1e2e; padding: 25px; border-radius: 12px; border: 1px solid #ff007f; text-align: center;'>
                 <h3>🔒 SECTION RÉSERVÉE AU PLAN PRO</h3>
-                <p>La configuration visuelle avancée nécessite l'activation d'une licence Pro.</p>
+                <p>La configuration visuelle avancée et la création d'abonnements logiciels nécessitent une licence Pro.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
+            # Sous-onglet 1 : Gestion cosmétique des enseignes
             st.subheader("🖼️ Personnalisation de l'arrière-plan par Copier-Coller")
             if not liste_shops:
                 st.warning("Aucune boutique disponible pour le re-branding.")
@@ -676,25 +707,18 @@ with tab2:
                     st.success(f"🎨 L'ambiance visuelle de '{shop_nom_branding}' a été mise à jour !")
                     st.rerun()
 
-    # --- INJECTION DU MODULE DE REVENU PASSIF MICRO-SAAS (Toujours visible pour les comptes actifs)
-    st.markdown("---")
-    st.header("💎 Rente Réelle : Déploiement de Logiciels Micro-SaaS")
-    if st.session_state.forfait != "Pro":
-        st.markdown("""
-        <div style='background-color: #1a1c23; padding: 25px; border-radius: 12px; border: 1px solid #00ffcc; text-align: center;'>
-            <h3>🔒 MODULE DE REVENU PASSIF VERROUILLÉ</h3>
-            <p>Le système de génération de licences logicielles automatisées nécessite l'infrastructure Pro.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.subheader("🚀 Forger une Application Clone (Générateur de Rente)")
-        st.markdown("Créez instantanément une page publique d'abonnement pour vendre votre propre application en marque blanche.")
-        nom_logiciel_vente = st.text_input("Nom de l'application logicielle à vendre :", "SaaS Automate Pro", key="input_nom_saas")
-        tarif_SaaS = st.number_input("Prix de l'abonnement mensuel ($) :", min_value=10.0, value=100.0, step=10.0, key="input_prix_saas")
-        
-        if st.button("💎 Déployer la Page de Vente Logicielle", key="btn_deploy_saas"):
-            cle_auto = f"STARTER-AUTO-{random.randint(10000, 99999)}"
-            texte_boutique_SaaS = f"""
+            st.markdown("<br><hr style='border: 1px solid #334155;'><br>", unsafe_allow_html=True)
+
+            # ✅ RETOUR SÉCURISÉ ET COMPLET DU CONCEPTEUR D'ABONNEMENT MICRO-SAAS
+            st.subheader("🚀 Forger une Application Clone (Générateur de Rente SaaS)")
+            st.markdown("Créez instantanément une page publique d'abonnement pour vendre votre propre application logicielle en marque blanche.")
+            
+            nom_logiciel_vente = st.text_input("Nom de l'application logicielle à vendre :", "SaaS Automate Pro", key="input_nom_saas")
+            tarif_SaaS = st.number_input("Prix de l'abonnement mensuel ($) :", min_value=10.0, value=100.0, step=10.0, key="input_prix_saas")
+            
+            if st.button("💎 Déployer la Page de Vente Logicielle", key="btn_deploy_saas"):
+                cle_auto = f"STARTER-AUTO-{random.randint(10000, 99999)}"
+                texte_boutique_SaaS = f"""
 # 🚀 Bienvenue sur {nom_logiciel_vente}
 ### Accédez instantanément à votre infrastructure de Business Automatique.
 * **Outils inclus** : Scanneur de leads B2B, Concepteur de boutiques IA, Radar Espion.
@@ -705,24 +729,24 @@ Remplissez vos informations ci-dessous pour sécuriser votre accès instantané 
 ### 🔓 VOTRE CLÉ LOGICIELLE UNIQUE SERA DÉLIVRÉE ICI : 
 Une fois votre commande validée dans le formulaire ci-dessous, votre clé d'activation **`{cle_auto}`** sera rattachée à votre nom.
 """
-            outils.ajouter_boutique(nom_logiciel_vente, "Abonnement Logiciel SaaS", texte_boutique_SaaS, tarif_SaaS, couleur="#f8fafc")
-            st.success("🎉 Page de vente configurée avec succès !")
-            st.rerun()
-        
-        st.markdown("---")
-        st.subheader("🔗 Liens d'accès à vos pages de vente actives")
-        for s_saas in liste_shops:
-            nom_saas_boutique, niche_saas_boutique, _, _, _ = s_saas
-            if "SaaS" in niche_saas_boutique or "Abonnement" in niche_saas_boutique:
-                nom_saas_propre = nom_saas_boutique.lower().replace(' ', '-')
-                st.link_button(f"🌍 Ouvrir la page d'abonnement : {nom_saas_boutique.upper()}", url=f"/?shop={nom_saas_propre}")
-        
-        st.markdown("---")
-        st.subheader("📊 Liste des Licences Logicielles Actives")
-        abonnements_actifs = outils.recuperer_abonnements()
-        if not abonnements_actifs:
-            st.info("Aucune rente logicielle active pour le moment.")
-        else:
-            for abonn in abonnements_actifs:
-                plateforme, client, email_client, tarif, statut, date_ins = abonn
-                st.write(f"🔑 **{client}** ({email_client}) a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
+                outils.ajouter_boutique(nom_logiciel_vente, "Abonnement Logiciel SaaS", texte_boutique_SaaS, tarif_SaaS, couleur="#f8fafc")
+                st.success("🎉 Page de vente configurée avec succès !")
+                st.rerun()
+            
+            st.markdown("---")
+            st.subheader("🔗 Liens d'accès à vos pages de vente actives")
+            for s_saas in liste_shops:
+                nom_saas_boutique, niche_saas_boutique, _, _, _ = s_saas
+                if "SaaS" in niche_saas_boutique or "Abonnement" in niche_saas_boutique:
+                    nom_saas_propre = nom_saas_boutique.lower().replace(' ', '-')
+                    st.link_button(f"🌍 Ouvrir la page d'abonnement : {nom_saas_boutique.upper()}", url=f"/?shop={nom_saas_propre}", key=f"saas_lnk_{nom_saas_propre}")
+            
+            st.markdown("---")
+            st.subheader("📊 Liste des Licences Logicielles Actives")
+            abonnements_actifs = outils.recuperer_abonnements()
+            if not abonnements_actifs:
+                st.info("Aucune rente logicielle active pour le moment.")
+            else:
+                for abonn in abonnements_actifs:
+                    plateforme, client, email_client, tarif, statut, date_ins = abonn
+                    st.write(f"🔑 **{client}** ({email_client}) a activé un forfait sur `{plateforme}` ➔ **{tarif} $ / mois** (Inscrit le : {date_ins})")
