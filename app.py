@@ -40,9 +40,9 @@ if "shop" in query_params:
         try: prix_bdd_propre = float(prix_bdd)
         except: prix_bdd_propre = 29.99
         
-        contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
+        contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").replace("🤖 Agent Actif", "").strip()
 
-        # INJECTION CSS POUR LE DESIGN EXCLUSIF DE LA VITRINE CLIENT
+        # INJECTION CSS POUR LE DESIGN EXCLUSIF DE LA VITRINE CLIENT (STYLE SHOPIFY MODERN)
         fond_branding = couleur if (couleur and not "@" in couleur) else "#f8fafc"
         st.markdown(f"""
         <style>
@@ -60,6 +60,7 @@ if "shop" in query_params:
             background-color: #00ffcc !important; color: #0f172a !important;
             font-weight: 800 !important; text-transform: uppercase !important;
             border-radius: 12px !important; border: none !important; padding: 12px 24px !important;
+            box-shadow: 0 4px 6px -1px rgba(0,255,204,0.3) !important;
         }}
         input {{ background-color: #ffffff !important; color: #0f172a !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important; }}
         </style>
@@ -78,14 +79,12 @@ if "shop" in query_params:
                     lignes_bloc = bloc.split("\n")
                     nom_produit = lignes_bloc[0].strip() if lignes_bloc else "Article de style"
                     
-                    # CORRECTION DU REGEX : Extraction stable sans plantage ni remise à zéro
+                    # Extraction stable et propre du prix réel affiché par l'IA
                     trouver_prix = re.search(r"Prix\s*:\s*([\d\s\.,]+)", bloc, re.IGNORECASE)
                     if trouver_prix:
                         prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".").strip()
-                        try:
-                            prix_chiffre = float(prix_texte)
-                        except ValueError:
-                            prix_chiffre = prix_bdd_propre
+                        try: prix_chiffre = float(prix_texte)
+                        except ValueError: prix_chiffre = prix_bdd_propre
                     else:
                         secours_prix = re.search(r"([\d\s\.,]+)\s*\$", bloc)
                         if secours_prix:
@@ -97,7 +96,17 @@ if "shop" in query_params:
                     trouver_source = re.search(r"Source\s*:\s*(.*)", bloc, re.IGNORECASE)
                     source_produit = trouver_source.group(1).strip() if trouver_source else "Enseigne locale"
                     
-                    st.markdown(f"### 📦 {bloc}", unsafe_allow_html=True)
+                    # AFFICHAGE DU PRODUIT SOUS FORME DE BELLE CARTE E-COMMERCE ARROUNDIE
+                    st.markdown(f"""
+                    <div style='background-color: #ffffff; padding: 22px; border-radius: 16px; border: 2px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 15px;'>
+                        <h3 style='margin-top: 0; color: #1e293b; font-weight: 700; font-size: 18px;'>📦 {nom_produit}</h3>
+                        <p style='color: #475569; font-size: 14.5px; line-height: 1.5; margin-bottom: 12px;'>{bloc.replace(nom_produit, "").strip()}</p>
+                        <div style='display: flex; gap: 10px; margin-top: 10px;'>
+                            <span style='background-color: #f1f5f9; color: #334155; padding: 5px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600;'>🏬 Magasin : {source_produit}</span>
+                            <span style='background-color: #e2fdf5; color: #0f766e; padding: 5px 14px; border-radius: 9999px; font-size: 12px; font-weight: 700;'>💰 {prix_chiffre} $</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     if st.button(f"🛒 Ajouter à ma sélection : {nom_produit}", key=f"btn_ajout_{idx}"):
                         st.session_state.panier_client.append({
@@ -109,6 +118,35 @@ if "shop" in query_params:
                         st.toast(f"✅ {nom_produit} ({prix_chiffre} $) a été ajouté à votre panier !", icon="🛒")
         else:
             st.markdown(contenu_client, unsafe_allow_html=True)
+
+        # --- LOGIQUE ET ENTRÉE DE L'AGENT CONVERSATIONNEL IA COMMERCIAL ---
+        if "🤖 Agent Actif" in contenu:
+            st.markdown("<br><hr style='border: 1px solid #e2e8f0;'>", unsafe_allow_html=True)
+            st.markdown("### 🤖 Assistant Commercial Virtuel")
+            st.caption(f"Pose des questions sur nos articles ou sur la livraison de proximité chez {nom} !")
+            
+            if f"chat_{nom}" not in st.session_state:
+                st.session_state[f"chat_{nom}"] = []
+                
+            for msg in st.session_state[f"chat_{nom}"]:
+                with st.chat_message(msg["role"]):
+                    st.write(msg["content"])
+                    
+            prompt_client = st.chat_input("Demande un conseil ou pose une question à l'IA...")
+            if prompt_client:
+                with st.chat_message("user"):
+                    st.write(prompt_client)
+                st.session_state[f"chat_{nom}"].append({"role": "user", "content": prompt_client})
+                
+                prompt_systeme_ia = f"""Tu es l'assistant de vente virtuel de la boutique '{nom}' ({niche}).
+                Voici notre catalogue de produits réels disponibles : {contenu_client}.
+                Rends service au client, réponds de façon amicale, donne envie d'acheter et limite ta réponse à 2 phrases maximum."""
+                
+                reponse_ia = outils.appeler_groq(f"{prompt_systeme_ia}\n\nClient: {prompt_client}")
+                
+                with st.chat_message("assistant"):
+                    st.write(reponse_ia)
+                st.session_state[f"chat_{nom}"].append({"role": "assistant", "content": reponse_ia})
 
         st.markdown("<br><hr style='border: 1px solid #e2e8f0;'>", unsafe_allow_html=True)
         st.markdown("## 🛒 Votre Panier d'Achat Réseau")
@@ -136,7 +174,7 @@ if "shop" in query_params:
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # Formulaire de commande sécurisé relié à la boîte de réception interne de l'utilisateur
+        # Formulaire de commande sécurisé relié à la boîte de réception interne de l'gérant
         if st.session_state.panier_client:
             st.markdown("### ⚡ Finaliser la commande en 1-Clic")
             with st.form("achat_client_form"):
@@ -146,7 +184,6 @@ if "shop" in query_params:
                 texte_bouton = f"🔥 Confirmer et commander ({round(total_commande, 2)} $)"
                 if st.form_submit_button(texte_bouton):
                     if nom_client and adresse_client:
-                        # Enregistrement des commandes avec le prix extrait exact de la session
                         for item in st.session_state.panier_client:
                             outils.enregistrer_commande_interne(
                                 nom_boutique=item.get('vendeur', nom),
@@ -305,7 +342,7 @@ with tab1:
             try: b_prix_propre = float(b_prix)
             except: b_prix_propre = 29.99
                 
-            b_contenu_propre = b_contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
+            b_contenu_propre = b_contenu.replace("```html", "").replace("```", "").replace("html", "").replace("🤖 Agent Actif", "").strip()
             
             if "### 📦" in b_contenu_propre:
                 blocs = b_contenu_propre.split("### 📦")
@@ -315,9 +352,22 @@ with tab1:
                         nom_produit = lignes_bloc[0].strip() if lignes_bloc else "Article de style"
                         if recherche_client and (recherche_client not in nom_produit.lower() and recherche_client not in bloc.lower()):
                             continue
+                        
+                        # Extraction propre du prix pour la marketplace collective
+                        trouver_prix_m = re.search(r"Prix\s*:\s*([\d\s\.,]+)", bloc, re.IGNORECASE)
+                        if trouver_prix_m:
+                            try: prix_art = float(trouver_prix_m.group(1).replace(" ", "").replace(",", ".").strip())
+                            except: prix_art = b_prix_propre
+                        else:
+                            secours_prix_m = re.search(r"([\d\s\.,]+)\s*\$", bloc)
+                            if secours_prix_m:
+                                try: prix_art = float(secours_prix_m.group(1).replace(" ", "").replace(",", ".").strip())
+                                except: prix_art = b_prix_propre
+                            else:
+                                prix_art = b_prix_propre
                             
                         liste_articles_extraits.append({
-                            "vendeur": b_nom, "niche": b_niche, "bloc_texte": bloc, "nom_produit": nom_produit, "prix": b_prix_propre, "b_idx": b_idx, "p_idx": p_idx
+                            "vendeur": b_nom, "niche": b_niche, "bloc_texte": bloc, "nom_produit": nom_produit, "prix": prix_art, "b_idx": b_idx, "p_idx": p_idx
                         })
 
         random.shuffle(liste_articles_extraits)
@@ -334,7 +384,7 @@ with tab1:
                 st.markdown(f"### 📦 {art['bloc_texte']}", unsafe_allow_html=True)
                 
                 nom_boutique_url = art['vendeur'].lower().replace(" ", "-")
-                st.link_button(f"🛒 Ouvrir la page de commande réelle : {art['nom_produit']}", url=f"/?shop={nom_boutique_url}", key=f"market_lnk_{art['b_idx']}_{art['p_idx']}", type="secondary")
+                st.link_button(f"🛒 Ouvrir la page de commande réelle : {art['nom_produit']} ({art['prix']} $)", url=f"/?shop={nom_boutique_url}", key=f"market_lnk_{art['b_idx']}_{art['p_idx']}", type="secondary")
                 st.markdown("<br>", unsafe_allow_html=True)
 
     # --- LE FORUM DE DISCUSSION DE L'EMPIRE ---
@@ -436,7 +486,7 @@ with tab2:
                         
                         ### 📦 [Nom exact du produit réel]
                         * **Description** : [Description marketing percutante et 100% VRAIE d'environ 3 phrases]
-                        * **⚡ Pourquoi ce produit est unique** : [Argumentaire de vente honnête basé sur la disponibilité locale]
+                        * **⚡ Pourquoi ce produit is unique** : [Argumentaire de vente honnête basé sur la disponibilité locale]
                         * **Prix** : {prix_par_defaut} $
                         * **Source** : [Nom de l'enseigne physique choisie parmi : {magasins_actifs}]
                         
