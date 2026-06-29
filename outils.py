@@ -97,7 +97,7 @@ def enregistrer_commande_interne(nom_boutique, nom_client, adresse, commande, to
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            INSERT INTO boite_reception (nom_boutique, nom_client, adresse, commande, total) 
+            INSERT INTO boite_reception (nom_boutique, nom_client, adresse, commande, total)
             VALUES (?, ?, ?, ?, ?)
         """, (nom_boutique, nom_client, adresse, commande, total))
         cursor.execute("UPDATE statistiques SET valeur = valeur + ? WHERE cle = 'ca_total'", (total,))
@@ -198,3 +198,28 @@ def recuperer_abonnements():
     res = cursor.fetchall()
     conn.close()
     return res
+
+def supprimer_boutique(nom):
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM boutiques WHERE nom = ?", (nom,))
+        cursor.execute("INSERT INTO notifications (texte) VALUES (?)", (f"🗑️ Infrastructure : La vitrine '{nom}' a été démontée.",))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
+
+def reinitialiser_tous_les_codes():
+    conn = obtenir_connexion()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM codes_utilises")
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
