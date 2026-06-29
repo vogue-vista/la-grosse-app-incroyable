@@ -78,8 +78,8 @@ if "shop" in query_params:
                     lignes_bloc = bloc.split("\n")
                     nom_produit = lignes_bloc[0].strip() if lignes_bloc else "Article de style"
                     
-                    # CORRECTION DU BUG : Extraction ultra-robuste du prix réel affiché par l'IA
-                    trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
+                    # CORRECTION DU REGEX : Extraction stable sans plantage ni remise à zéro
+                    trouver_prix = re.search(r"Prix\s*:\s*([\d\s\.,]+)", bloc, re.IGNORECASE)
                     if trouver_prix:
                         prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".").strip()
                         try:
@@ -87,21 +87,18 @@ if "shop" in query_params:
                         except ValueError:
                             prix_chiffre = prix_bdd_propre
                     else:
-                        # Recherche secondaire par symbole de secours ($)
-                        secours_prix = re.search(r"([\d[\.,]?\d+)\s*\$", bloc)
+                        secours_prix = re.search(r"([\d\s\.,]+)\s*\$", bloc)
                         if secours_prix:
-                            try: prix_chiffre = float(secours_prix.group(1).replace(",", "."))
+                            try: prix_chiffre = float(secours_prix.group(1).replace(" ", "").replace(",", ".").strip())
                             except: prix_chiffre = prix_bdd_propre
                         else:
                             prix_chiffre = prix_bdd_propre
                     
-                    # Extraction de la source ou du magasin physique ciblé par l'IA
                     trouver_source = re.search(r"Source\s*:\s*(.*)", bloc, re.IGNORECASE)
                     source_produit = trouver_source.group(1).strip() if trouver_source else "Enseigne locale"
                     
                     st.markdown(f"### 📦 {bloc}", unsafe_allow_html=True)
                     
-                    # Bouton d'ajout dynamique rattaché à chaque produit réel avec le BON prix
                     if st.button(f"🛒 Ajouter à ma sélection : {nom_produit}", key=f"btn_ajout_{idx}"):
                         st.session_state.panier_client.append({
                             "nom": nom_produit,
@@ -149,7 +146,7 @@ if "shop" in query_params:
                 texte_bouton = f"🔥 Confirmer et commander ({round(total_commande, 2)} $)"
                 if st.form_submit_button(texte_bouton):
                     if nom_client and adresse_client:
-                        # Enregistrement des commandes avec information claire du magasin physique
+                        # Enregistrement des commandes avec le prix extrait exact de la session
                         for item in st.session_state.panier_client:
                             outils.enregistrer_commande_interne(
                                 nom_boutique=item.get('vendeur', nom),
@@ -185,7 +182,7 @@ if not st.session_state.compte_actif:
         <span style='font-size: 13.5px; color: #cbd5e1; line-height: 1.7;'>
         Bonjour aux parents. Cette application n'est pas gérée par une multinationale américaine comme Shopify ou Amazon, mais par un <b>développeur indépendant et local</b>. Et c'est votre meilleure garantie de sécurité :<br><br>
         • <b>Zéro Donnée Sensible</b> : Contrairement aux géants du web qui stockent des millions de cartes de crédit et de mots de passe (et qui se font pirater), notre application ne collecte <b>absolument rien</b>. Pas de carte bancaire, pas de mot de passe, pas de compte connecté. Un hacker ne peut pas voler ce qui n'existe pas.<br>
-        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient les membres par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Our logiciel sert uniquement de panneau d'affichage textuel pour coordonner la logistique.<br>
+        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient les membres par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel sert uniquement de panneau d'affichage textuel pour coordonner la logistique.<br>
         • <b>Soutien Direct</b> : Pas de robot d'assistance à l'autre bout du monde. Vous utilisez un outil indépendant, épuré, transparent et conçu pour initier les jeunes aux affaires de manière sécuritaire et responsable.<br>
         • <b>Garantie d'Essai Gratuit</b> : Votre enfant peut utiliser un code d'accès temporaire pour valider le système sans que vous n'ayez à débourser un seul dollar.<br>
         • <b>Zéro Risque de Fournisseur Étranger</b> : Ce système n'utilise pas de sites obscurs ou de dropshipping international. Les livreurs ou les gérants se déplacent <b>physiquement à pied ou à vélo dans les magasins du quartier</b>. Aucun numéro de carte bancaire n'est requis pour les commandes grossistes en ligne !
@@ -488,12 +485,12 @@ with tab2:
         if not liste_shops_utilisateur:
             st.info("Aucun site web actif détecté rattaché à votre clé d'activation actuellement. Créez-en un dans l'onglet Conception !")
         else:
-            noms_boutiques_propres = [b[0] for b in liste_shops_utilisateur]
+            noms_boutiques_propres = [b for b in liste_shops_utilisateur]
             choix_nom = st.selectbox("Sélectionnez la boutique à inspecter :", noms_boutiques_propres, key="select_inspect_shop")
             
             choix = None
             for s in liste_shops_utilisateur:
-                if s[0] == choix_nom:
+                if s == choix_nom:
                     choix = s
                     break
                     
