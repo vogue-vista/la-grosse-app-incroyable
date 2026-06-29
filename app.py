@@ -38,7 +38,7 @@ if "shop" in query_params:
     if boutique_trouvee:
         nom, niche, contenu, couleur, prix_bdd = boutique_trouvee
         try: prix_bdd_propre = float(prix_bdd)
-        except: prix_bdd_propre = 0.0
+        except: prix_bdd_propre = 29.99
         
         contenu_client = contenu.replace("```html", "").replace("```", "").replace("html", "").strip()
 
@@ -78,16 +78,22 @@ if "shop" in query_params:
                     lignes_bloc = bloc.split("\n")
                     nom_produit = lignes_bloc[0].strip() if lignes_bloc else "Article de style"
                     
-                    # Extraction automatique du prix par expression régulière (Regex)
+                    # CORRECTION DU BUG : Extraction ultra-robuste du prix réel affiché par l'IA
                     trouver_prix = re.search(r"Prix\s*:\s*([\d[\s,\.]*\d+)", bloc, re.IGNORECASE)
                     if trouver_prix:
-                        prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".")
+                        prix_texte = trouver_prix.group(1).replace(" ", "").replace(",", ".").strip()
                         try:
                             prix_chiffre = float(prix_texte)
                         except ValueError:
                             prix_chiffre = prix_bdd_propre
                     else:
-                        prix_chiffre = prix_bdd_propre
+                        # Recherche secondaire par symbole de secours ($)
+                        secours_prix = re.search(r"([\d[\.,]?\d+)\s*\$", bloc)
+                        if secours_prix:
+                            try: prix_chiffre = float(secours_prix.group(1).replace(",", "."))
+                            except: prix_chiffre = prix_bdd_propre
+                        else:
+                            prix_chiffre = prix_bdd_propre
                     
                     # Extraction de la source ou du magasin physique ciblé par l'IA
                     trouver_source = re.search(r"Source\s*:\s*(.*)", bloc, re.IGNORECASE)
@@ -95,7 +101,7 @@ if "shop" in query_params:
                     
                     st.markdown(f"### 📦 {bloc}", unsafe_allow_html=True)
                     
-                    # Bouton d'ajout dynamique rattaché à chaque produit réel
+                    # Bouton d'ajout dynamique rattaché à chaque produit réel avec le BON prix
                     if st.button(f"🛒 Ajouter à ma sélection : {nom_produit}", key=f"btn_ajout_{idx}"):
                         st.session_state.panier_client.append({
                             "nom": nom_produit,
@@ -103,7 +109,7 @@ if "shop" in query_params:
                             "vendeur": nom,
                             "source": source_produit
                         })
-                        st.toast(f"✅ {nom_produit} a été ajouté à votre panier !", icon="🛒")
+                        st.toast(f"✅ {nom_produit} ({prix_chiffre} $) a été ajouté à votre panier !", icon="🛒")
         else:
             st.markdown(contenu_client, unsafe_allow_html=True)
 
@@ -161,8 +167,10 @@ if "shop" in query_params:
         st.stop()
 
 # --- 2. CONFIGURATION DE SESSION ADMINISTRATEUR ---
-if "compte_actif" not in st.session_state: st.session_state.compte_actif = False
-if "forfait" not in st.session_state: st.session_state.forfait = "Aucun"
+if "compte_actif" not in st.session_state: 
+    st.session_state.compte_actif = False
+if "forfait" not in st.session_state: 
+    st.session_state.forfait = "Aucun"
 
 # 🔥 BLOC SÉCURITÉ PARENTALE ET TRANSPARENCE AVANT AUTHENTIFICATION
 if not st.session_state.compte_actif:
@@ -177,7 +185,7 @@ if not st.session_state.compte_actif:
         <span style='font-size: 13.5px; color: #cbd5e1; line-height: 1.7;'>
         Bonjour aux parents. Cette application n'est pas gérée par une multinationale américaine comme Shopify ou Amazon, mais par un <b>développeur indépendant et local</b>. Et c'est votre meilleure garantie de sécurité :<br><br>
         • <b>Zéro Donnée Sensible</b> : Contrairement aux géants du web qui stockent des millions de cartes de crédit et de mots de passe (et qui se font pirater), notre application ne collecte <b>absolument rien</b>. Pas de carte bancaire, pas de mot de passe, pas de compte connecté. Un hacker ne peut pas voler ce qui n'existe pas.<br>
-        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient les membres par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Notre logiciel sert uniquement de panneau d'affichage textuel pour coordonner la logistique.<br>
+        • <b>100% Circuit Bancaire Canadien</b> : Les clients paient les membres par virement Interac direct. L'argent voyage exclusivement de banque à banque (ex: Desjardins). Our logiciel sert uniquement de panneau d'affichage textuel pour coordonner la logistique.<br>
         • <b>Soutien Direct</b> : Pas de robot d'assistance à l'autre bout du monde. Vous utilisez un outil indépendant, épuré, transparent et conçu pour initier les jeunes aux affaires de manière sécuritaire et responsable.<br>
         • <b>Garantie d'Essai Gratuit</b> : Votre enfant peut utiliser un code d'accès temporaire pour valider le système sans que vous n'ayez à débourser un seul dollar.<br>
         • <b>Zéro Risque de Fournisseur Étranger</b> : Ce système n'utilise pas de sites obscurs ou de dropshipping international. Les livreurs ou les gérants se déplacent <b>physiquement à pied ou à vélo dans les magasins du quartier</b>. Aucun numéro de carte bancaire n'est requis pour les commandes grossistes en ligne !
@@ -191,14 +199,12 @@ st.sidebar.markdown("<hr style='border: 1px solid #334155; margin: 10px 0;'>", u
 def valider_code_acces():
     code = st.session_state.cle_authentification.strip()
     
-    # 👑 Clé Maître Développeur / Option Pro
     if code == "ADMIN-INFINI-99":
         st.session_state.compte_actif = True
         st.session_state.forfait = "Pro"
         st.sidebar.success("👑 GRADE EMPIRE PRO ACTIVÉ !")
         st.balloons()
         st.rerun()
-    # ⚡ Clé Licence Pro Mensuelle (200$ / mois)
     elif code.startswith("PRO-") and len(code) > 8:
         if outils.code_deja_utilise(code):
             st.sidebar.error("❌ Cette licence Pro a expiré ou a déjà été consommée.")
@@ -209,7 +215,6 @@ def valider_code_acces():
             st.sidebar.success("🚀 ACCÈS COMPLET PRO VALIDÉ !")
             st.balloons()
             st.rerun()
-    # ⚔️ Clé Licence Starter Mensuelle (100$ / mois)
     elif code.startswith("STARTER-") and len(code) > 12:
         if outils.code_deja_utilise(code):
             st.sidebar.error("❌ Cette licence Starter a déjà été consommée.")
@@ -260,6 +265,7 @@ st.markdown(f"""
     <span style='font-size:13px; color:#cbd5e1;'>• {notif_3}</span>
 </div>
 """, unsafe_allow_html=True)
+
 st.markdown("### 📊 Statistiques de l'Infrastructure")
 col1, col2, col3 = st.columns(3)
 liste_shops = outils.recuperer_boutiques()
@@ -284,7 +290,6 @@ else:
         "💡 B3: R&D Élite", 
         "🎨 Studio Branding & SaaS"
     ])
-
 with tab1:
     st.header("🛍️ Place de Marché Collective & Solidaire")
     st.markdown("Tous les articles créés par les membres s'affichent ici. L'affichage est mélangé pour donner une chance égale à chaque boutique.")
@@ -450,7 +455,7 @@ with tab2:
                             structure_demandee += f"- Produit : {p['nom']} | Prix de vente : {p['prix']} $\n"
                             
                         prompt_catalogue = f"""Tu es un copywriter e-commerce de confiance. Rédige les fiches descriptives pour la boutique '{nom_shop}' ({niche_shop}).
-                        Tu dois obligatoirement include ces produits spécifiques avec leurs prix exacts :
+                        Tu dois obligatoirement inclure ces produits spécifiques avec leurs prix exacts :
                         {structure_demandee}
                         
                         ⚠️ CONSIGNE DE SÉCURITÉ ET DE VÉRITÉ : Base-toi STRICTEMENT et UNIQUEMENT sur ces détails réels fournis par l'utilisateur : {details_reels}. Tu as interdiction formelle d'inventer ou de rajouter des caractéristiques non spécifiées.
@@ -624,11 +629,11 @@ with tab2:
                 if not liste_shops_utilisateur:
                     st.warning("Aucune boutique disponible sur votre compte pour implanter l'IA.")
                 else:
-                    noms_shops_chat = [s[0] for s in liste_shops_utilisateur]
+                    noms_shops_chat = [s for s in liste_shops_utilisateur]
                     shop_nom_chat = st.selectbox("Sélectionnez la boutique à équiper d'un Chatbot :", noms_shops_chat, key="select_shop_chat")
                     
                     if st.button("⚡ Greffer l'Assistant commercial IA", key="btn_greffe_chatbot"):
-                        shop_data = next((s for s in liste_shops_utilisateur if s[0] == shop_nom_chat), None)
+                        shop_data = next((s for s in liste_shops_utilisateur if s == shop_nom_chat), None)
                         if shop_data:
                             nom_s, niche_s, contenu_s, couleur_s, prix_s = shop_data
                             if "🤖 Agent Actif" not in contenu_s:
@@ -663,7 +668,7 @@ with tab2:
             if not liste_shops_utilisateur:
                 st.warning("Aucune boutique disponible sur votre compte pour le re-branding.")
             else:
-                noms_shops_branding = [s[0] for s in liste_shops_utilisateur]
+                noms_shops_branding = [s for s in liste_shops_utilisateur]
                 shop_nom_branding = st.selectbox("Sélectionnez la boutique à modifier :", noms_shops_branding, key="sb_select")
                 nouveau_fond = st.text_input("Collez l'URL de votre image ou votre couleur hexadécimale :", "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)", key="input_fond_custom")
                 
